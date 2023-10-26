@@ -1399,9 +1399,9 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "D:\\Git Projects\\F1-23-Discord-RPC\\F1-23-Discord-RPC.csproj",
-      "projectName": "F1-23-Discord-RPC",
-      "projectPath": "D:\\Git Projects\\F1-23-Discord-RPC\\F1-23-Discord-RPC.csproj",
+      "projectUniqueName": "D:\\Git Projects\\F1-23-Discord-RPC\\F1RPC.csproj",
+      "projectName": "F1RPC",
+      "projectPath": "D:\\Git Projects\\F1-23-Discord-RPC\\F1RPC.csproj",
       "packagesPath": "C:\\Users\\wrigh\\.nuget\\packages\\",
       "outputPath": "D:\\Git Projects\\F1-23-Discord-RPC\\obj\\",
       "projectStyle": "PackageReference",

@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "UpdzDXeHd7F9HHGGhAz+/wW/BNZk5PQG2W3Ld+/HpGR1xKK3VmF4QqXVGXJL5dNUoPE4e5As6Q0/A9Xl+acKiQ==",
+  "dgSpecHash": "xkYXVW55/uuGn77oFvH5CwET4qmlIpJ89aHa4IC9OnR/HcQVnALdQ/H5232Owg/kX//nokxlhGnaHGQbzVxjzQ==",
   "success": true,
-  "projectFilePath": "D:\\Git Projects\\F1-23-Discord-RPC\\F1-23-Discord-RPC.csproj",
+  "projectFilePath": "D:\\Git Projects\\F1-23-Discord-RPC\\F1RPC.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\wrigh\\.nuget\\packages\\communitytoolkit.mvvm\\8.2.0\\communitytoolkit.mvvm.8.2.0.nupkg.sha512",
     "C:\\Users\\wrigh\\.nuget\\packages\\f1sharp\\1.3.0\\f1sharp.1.3.0.nupkg.sha512",

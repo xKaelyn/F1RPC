@@ -35,7 +35,7 @@ namespace F1RPC
 
             Log.Information("DiscordRPC initialized");
 
-            Log.Information("Initializing program..");
+            Log.Information("Program initialized. Waiting for F1 23 to be opened..");
 
             // Check if F1 23 is running, if not, wait until it is - when it is, initialize the program and break loop.
             while (true)
@@ -64,19 +64,28 @@ namespace F1RPC
             int playerIndex = 0;
             int currentPosition = 0;
             int totalParticipants = 0;
-            float sessionTime = 0.0f;
-            NetDiscordRpc.RPC.Button[] btns = new NetDiscordRpc.RPC.Button[] 
-            { 
-                new NetDiscordRpc.RPC.Button() { Label = "Get F1 23", Url = "https://store.steampowered.com/app/2108330/F1_23/"},
-                new NetDiscordRpc.RPC.Button() { Label = "Want this rich presence?", Url = "https://github.com/xKaelyn/F1RPC"}
-            };
+            double raceCompletion = 0.0;
+            int lobbyPlayerCount = 0;
+            int finalPosition = 0;
+            int finalGridPosition = 0;
+            int finalPoints = 0;
+            int finalResultStatus = 0;
+            int weatherId = 0;
+            string weatherConditions = "";
 
-            // Event hooker for when F1 23 closes
+            // Buttons for RPC
+            NetDiscordRpc.RPC.Button[] btns = new NetDiscordRpc.RPC.Button[]
+            {
+                        new NetDiscordRpc.RPC.Button() { Label = "Get F1 23", Url = "https://store.steampowered.com/app/2108330/F1_23/"},
+                        new NetDiscordRpc.RPC.Button() { Label = "Want this rich presence?", Url = "https://github.com/xKaelyn/F1RPC"}
+            };
 
             // Event hookers (funny name eh?)
             client.OnLapDataReceive += (packet) => Client_OnLapDataReceive(packet, discord);
             client.OnSessionDataReceive += (packet) => Client_OnSessionDataReceive(packet, discord, teamName);
             client.OnParticipantsDataReceive += (packet) => Client_OnParticipantsDataReceive(packet, discord);
+            client.OnLobbyInfoDataReceive += (packet) => Client_OnLobbyInfoDataReceive(packet, discord);
+            client.OnFinalClassificationDataReceive += (packet) => Client_OnFinalClassificationDataReceive(packet, discord);
 
             // When first booting system, reset the status by showing a "in menu" presence
             resetStatus(client, discord);
@@ -87,9 +96,76 @@ namespace F1RPC
                 playerIndex = packet.header.playerCarIndex;
                 lapNumber = packet.lapData[playerIndex].currentLapNum;
                 currentPosition = packet.lapData[playerIndex].carPosition;
+                
+                //Percentage for race completion - treat lap 1 as 0% and last lap as 100%
+                if (lapNumber == 1)
+                {
+                    raceCompletion = 0.0;
+                }
+                else
+                {
+                    raceCompletion = Math.Round((double)(lapNumber - 1) / (double)(totalLaps - 1) * 100, 2);
+                }
+            }
+
+            // Method for when recieving lobby info
+            // Lobby data is received twice a second, until the game begins and the lobby is destroyed.
+            void Client_OnLobbyInfoDataReceive(LobbyInfoPacket packet, DiscordRPC discord)
+            {
+                lobbyPlayerCount = packet.numPlayers;
+
+                // Variable to change "player" to "players" if more than 1 player is in the lobby - no need to while loop this as it's only modified each time the data is received
+                var playerText = "";
+                if (lobbyPlayerCount > 1)
+                {
+                    playerText = "players";
+                }
+                if (lobbyPlayerCount < 1)
+                {
+                    playerText = "player";
+                }
+
+                // Set presence to "Waiting in the lobby with x other players", -1 because the player itself is not counted
+                discord.SetPresence(new RichPresence
+                {
+                    Details = "In the menus",
+                    State = $"Waiting in the lobby with {lobbyPlayerCount - 1} other {playerText}",
+                    Assets = new Assets
+                    {
+                        LargeImageKey = $"",
+                        LargeImageText = $""
+                    },
+                    Buttons = btns
+                });
+            }
+
+            // Method for when recieving final classification data - used for getting final position
+            // Final Classification data is only received once once the final scoreboard is shown to the player.
+            void Client_OnFinalClassificationDataReceive(FinalClassificationPacket packet, DiscordRPC discord)
+            {
+                finalPosition = packet.classificationData[playerIndex].position;
+                finalGridPosition = packet.classificationData[playerIndex].gridPosition;
+                finalPoints = packet.classificationData[playerIndex].points;
+                finalResultStatus = (int)packet.classificationData[playerIndex].resultStatus;
+
+                if (finalResultStatus == 3)
+                {
+                    discord.SetPresence(new RichPresence
+                    {
+                        Details = $"Finished: P{finalPosition} / P{totalParticipants} | Started: P{finalGridPosition} | Track: {track}",
+                        State = $"Racing for {teamName} | {finalPoints} points earned",
+                        Assets = new Assets
+                        {
+                            LargeImageKey = $"",
+                            LargeImageText = $"{track}"
+                        },
+                        Buttons = btns
+                    });
+                }
             }
 
             // Method for when recieving participants data - used for getting team name
+            // Participant data is received once every 5 seconds.
             void Client_OnParticipantsDataReceive(ParticipantsPacket packet, DiscordRPC discord)
             {
                 playerIndex = packet.header.playerCarIndex;
@@ -145,24 +221,76 @@ namespace F1RPC
                     new { GameId = 114, Name = "Campos (2021)" },
                     new { GameId = 115, Name = "BWT (2021)" },
                     new { GameId = 116, Name = "Trident (2021)" },
-                    new { GameId = 117, Name = "Mercedes AMG GT Black Series" }
+                    new { GameId = 117, Name = "Mercedes AMG GT Black Series" },
+                    new { GameId = 118, Name = "Mercedes (2022)" },
+                    new { GameId = 119, Name = "Ferrari (2022)" },
+                    new { GameId = 120, Name = "Red Bull Racing (2022)" },
+                    new { GameId = 121, Name = "Williams (2022)" },
+                    new { GameId = 122, Name = "Aston Martin (2022)" },
+                    new { GameId = 123, Name = "Alpine (2022)" },
+                    new { GameId = 124, Name = "AlphaTauri (2022)"},
+                    new { GameId = 125, Name = "Haas (2022)"},
+                    new { GameId = 126, Name = "McLaren (2022)"},
+                    new { GameId = 127, Name = "Alfa Romeo (2022)"},
+                    new { GameId = 128, Name = "Konnersport (2022)" },
+                    new { GameId = 129, Name = "Konnersport" },
+                    new { GameId = 130, Name = "Prema (2022)" },
+                    new { GameId = 131, Name = "Uni-Virtuosi (2022)" },
+                    new { GameId = 132, Name = "Carlin (2022)" },
+                    new { GameId = 133, Name = "MP Motorsport (2022)" },
+                    new { GameId = 134, Name = "Charouz (2022)" },
+                    new { GameId = 135, Name = "Dams (2022)" },
+                    new { GameId = 136, Name = "Campos (2022)" },
+                    new { GameId = 137, Name = "Van Amersfoort Racing (2022)" },
+                    new { GameId = 138, Name = "Trident (2022)" },
+                    new { GameId = 139, Name = "Hitech (2022)" },
+                    new { GameId = 140, Name = "Art GP (2022)" }
                 };
 
                 var team = teamlist.FirstOrDefault(t => t.GameId == teamId);
                 if (team != null)
                 {
-                    Console.WriteLine($"Team ID: {teamId} - Team Name: {team.Name}");
                     return team.Name;
                 }
                 return "";
             }
 
+            // Method for getting weather condition from weather id (as F1 uses integers)
+            string GetWeatherConditions(int weatherId)
+            {
+                switch (weatherId)
+                {
+                    case 0:
+                        weatherConditions = "Clear";
+                        break;
+                    case 1:
+                        weatherConditions = "Light Cloud";
+                        break;
+                    case 2:
+                        weatherConditions = "Overcast";
+                        break;
+                    case 3:
+                        weatherConditions = "Light Rain";
+                        break;
+                    case 4:
+                        weatherConditions = "Heavy Rain";
+                        break;
+                    case 5:
+                        weatherConditions = "Storm";
+                        break;
+                }
+                return weatherConditions;
+            }
+
             // Method for when receiving session data
+            // Session data is received twice a second until the session is destroyed. It only contains data about the ongoing session.
             void Client_OnSessionDataReceive(SessionPacket packet, DiscordRPC discord, string teamName)
             {
-                var ttaction = "";
                 formulaType = (int)packet.formula;
                 totalLaps = packet.totalLaps;
+                weatherId = (int)packet.weather;
+
+                weatherConditions = GetWeatherConditions(weatherId);
 
                 // Case switch for checking track id and setting track name
                 switch ((int)packet.trackId)
@@ -312,7 +440,6 @@ namespace F1RPC
                         break;
                     case 13:
                         sessionType = "Time Trial";
-                        ttaction = $"Attempting to beat previous best lap.";
                         break;
                 }
 
@@ -322,7 +449,7 @@ namespace F1RPC
                     discord.SetPresence(new RichPresence
                     {
                         Details = $"{sessionType} - {track}",
-                        State = $"",
+                        State = $"Racing for {teamName} | Conditions: {weatherConditions}",
                         Assets = new Assets
                         {
                             LargeImageKey = $"",
@@ -336,8 +463,8 @@ namespace F1RPC
                 {
                     discord.SetPresence(new RichPresence
                     {
-                        Details = $"{sessionType} - {track} | Lap {lapNumber} / {totalLaps}",
-                        State = $"Racing for {teamName} | P{currentPosition} / P{totalParticipants}",
+                        Details = $"{sessionType} - {track} | Lap {lapNumber} / {totalLaps} | {raceCompletion}% complete",
+                        State = $"Racing for {teamName} | P{currentPosition} / P{totalParticipants} | Conditions: {weatherConditions}",
                         Assets = new Assets
                         {
                             LargeImageKey = $"",
@@ -353,12 +480,12 @@ namespace F1RPC
                     discord.SetPresence(new RichPresence
                     {
                         Details = $"{sessionType} - {track}",
-                        State = $"{ttaction}",
                         Assets = new Assets
                         {
                             LargeImageKey = $"",
                             LargeImageText = $"{track}"
-                        }
+                        },
+                        Buttons = btns
                     });
                 }
             }
@@ -366,16 +493,16 @@ namespace F1RPC
             // Method for resetting status - checks if F1 23 is open before executing SetPresence
             async void resetStatus(TelemetryClient client, DiscordRPC discord)
             {
-                Log.Information("Program initialized - waiting for RPC..");
+                Log.Information("F1 23 detected. Connecting..");
 
                 while (true) { if (isF1Running) { break; } }
 
                 while (isF1Running)
                 {
-                    Log.Information($"Connected to F1 23 - Updating status..");
+                    Log.Information($"Connected. Updating status..");
                     discord.SetPresence(new RichPresence
                     {
-                        State = "In the main menu",
+                        Details = "In the menus",
                         Assets = new Assets
                         {
                             LargeImageKey = "f1_23_logo",
@@ -384,7 +511,7 @@ namespace F1RPC
                         Timestamps = new Timestamps(DateTime.UtcNow),
                         Buttons = btns
                     });
-                    Log.Information($"Updated Discord Status: {discord.CurrentPresence.State}");
+                    Log.Information($"Updated Discord Status: {discord.CurrentPresence.Details}");
                     break;
                 }
             }
