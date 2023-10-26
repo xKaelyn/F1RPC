@@ -22,6 +22,6 @@ Once you've decided which method you wish to take, you then have to create a Dis
 You are more than welcome to contribute to the code, just download **[Visual Studio](https://visualstudio.microsoft.com/downloads/)** and you're ready to go.
 
 #### Built using:
-- **[Microsoft Visual Studio 2022**(https://visualstudio.microsoft.com/downloads/)
+- **Microsoft Visual Studio 2022**
 - [**f1-sharp**](https://github.com/gvescu/f1-sharp) by gvescu
 - [**net-discord-rpc**](https://github.com/HeroesReplay/net-discord-rpc) by HeroesReplay
