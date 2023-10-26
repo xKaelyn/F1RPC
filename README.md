@@ -27,3 +27,4 @@ You are more than welcome to contribute to the code, just download **[Visual Stu
 - Microsoft Visual Studio 2022
 - [**f1-sharp**](https://github.com/gvescu/f1-sharp) by gvescu
 - [**net-discord-rpc**](https://github.com/HeroesReplay/net-discord-rpc) by HeroesReplay
+- [**iso-country-flags-svg-collection**](https://github.com/joielechong/iso-country-flags-svg-collection?tab=readme-ov-file) by joielechong
