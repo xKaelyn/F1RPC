@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Security.AccessControl;
 using F1Sharp;
 using F1Sharp.Packets;
 using NetDiscordRpc;
@@ -56,12 +57,21 @@ namespace F1RPC
             int teamId = 0;
             string teamName = "";
             var track = "";
-            double raceCompletion = 0.0;
             int lapNumber = 0;
             int totalLaps = 0;
             int formulaType = 0;
             string sessionType = "";
             int playerIndex = 0;
+            int currentPosition = 0;
+            int totalParticipants = 0;
+            float sessionTime = 0.0f;
+            NetDiscordRpc.RPC.Button[] btns = new NetDiscordRpc.RPC.Button[] 
+            { 
+                new NetDiscordRpc.RPC.Button() { Label = "Get F1 23", Url = "https://store.steampowered.com/app/2108330/F1_23/"},
+                new NetDiscordRpc.RPC.Button() { Label = "Want this rich presence?", Url = "https://github.com/xKaelyn/F1RPC"}
+            };
+
+            // Event hooker for when F1 23 closes
 
             // Event hookers (funny name eh?)
             client.OnLapDataReceive += (packet) => Client_OnLapDataReceive(packet, discord);
@@ -75,26 +85,15 @@ namespace F1RPC
             void Client_OnLapDataReceive(LapDataPacket packet, DiscordRPC discord)
             {
                 playerIndex = packet.header.playerCarIndex;
-                raceCompletion = packet.lapData[playerIndex].lapDistance / packet.lapData[playerIndex].totalDistance;
                 lapNumber = packet.lapData[playerIndex].currentLapNum;
-
-                discord.SetPresence(new RichPresence
-                {
-                    Details = $"{sessionType} - {track}",
-                    State = $"Racing for {teamName} | Lap {lapNumber} / {totalLaps}",
-                    Assets = new Assets
-                    {
-                        LargeImageKey = $"",
-                        LargeImageText = $""
-                    },
-                    Timestamps = new Timestamps(DateTime.UtcNow)
-                });
+                currentPosition = packet.lapData[playerIndex].carPosition;
             }
 
             // Method for when recieving participants data - used for getting team name
             void Client_OnParticipantsDataReceive(ParticipantsPacket packet, DiscordRPC discord)
             {
                 playerIndex = packet.header.playerCarIndex;
+                totalParticipants = packet.numActiveCars;
                 teamId = (int)packet.participants[playerIndex].teamId;
 
                 teamName = GetTeamNameFromId(teamId);
@@ -163,9 +162,7 @@ namespace F1RPC
             {
                 var ttaction = "";
                 formulaType = (int)packet.formula;
-                totalLaps = (int)packet.totalLaps;
-
-                DateTime sessionDateTime = new DateTime(621355968000000000 + (long)(packet.header.sessionTime * 10_000_000));
+                totalLaps = packet.totalLaps;
 
                 // Case switch for checking track id and setting track name
                 switch ((int)packet.trackId)
@@ -330,8 +327,7 @@ namespace F1RPC
                         {
                             LargeImageKey = $"",
                             LargeImageText = $"{track}"
-                        },
-                        Timestamps = new Timestamps(sessionDateTime)
+                        }
                     });
                 }
 
@@ -340,13 +336,14 @@ namespace F1RPC
                 {
                     discord.SetPresence(new RichPresence
                     {
-                        Details = $"{sessionType} - {track}",
-                        State = $"Racing for {teamName}",
+                        Details = $"{sessionType} - {track} | Lap {lapNumber} / {totalLaps}",
+                        State = $"Racing for {teamName} | P{currentPosition} / P{totalParticipants}",
                         Assets = new Assets
                         {
                             LargeImageKey = $"",
                             LargeImageText = $"{track}"
-                        }
+                        },
+                        Buttons = btns
                     });
                 }
 
@@ -384,7 +381,8 @@ namespace F1RPC
                             LargeImageKey = "f1_23_logo",
                             LargeImageText = "F1 23"
                         },
-                        Timestamps = new Timestamps(DateTime.UtcNow)
+                        Timestamps = new Timestamps(DateTime.UtcNow),
+                        Buttons = btns
                     });
                     Log.Information($"Updated Discord Status: {discord.CurrentPresence.State}");
                     break;
