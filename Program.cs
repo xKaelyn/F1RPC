@@ -1,29 +1,67 @@
-﻿using F1Sharp;
+﻿using System;
+using System.Diagnostics;
+using F1Sharp;
 using F1Sharp.Packets;
 using NetDiscordRpc;
 using NetDiscordRpc.RPC;
+using Serilog;
+using Serilog.Events;
+using Serilog.Sinks.SystemConsole.Themes;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
-namespace F1_23_Discord_RPC
+namespace F1RPC
 {
     public class F1RPC
     {
+        public DiscordRPC discord = new DiscordRPC("1166791756554178671"); // Will be thrown in a json file when ready to release
+        public bool isF1Running = false;
+
         static void Main(string[] args)
         {
-            // Connections to DiscordRPC and F1Sharp
-            DiscordRPC discord = new DiscordRPC("1166791756554178671"); // Will be thrown in a json file when ready to release
+            var f1 = new F1RPC();
+            DiscordRPC discord = f1.discord;
+
+            Log.Logger = new LoggerConfiguration()
+                .WriteTo.Console(theme: SystemConsoleTheme.Literate, restrictedToMinimumLevel: LogEventLevel.Information)
+                .WriteTo.File("logs/log.txt", rollingInterval: RollingInterval.Day, restrictedToMinimumLevel: LogEventLevel.Information)
+                .MinimumLevel.Information()
+                .CreateLogger();
+
+            Log.Information("Logger initialized");
+
+            // Let's actually bring the Discord client online
+            discord.Initialize();
+
+            Log.Information("DiscordRPC initialized");
+
+            Log.Information("Initializing program..");
+
+            // Check if F1 23 is running, if not, wait until it is - when it is, initialize the program and break loop.
+            while (true)
+            {
+                f1.isF1Running = Process.GetProcessesByName("F1_23").Length > 0;
+                if (f1.isF1Running)
+                {
+                    f1.Initialize().GetAwaiter().GetResult();
+                    break;
+                }
+            }
+        }
+
+        public async Task Initialize()
+        {
             TelemetryClient client = new TelemetryClient(20777);
 
             // Various variables to use
             int teamId = 0;
             string teamName = "";
+            var track = "";
             double raceCompletion = 0.0;
             int lapNumber = 0;
+            int totalLaps = 0;
             int formulaType = 0;
-            int sessionType = 0;
+            string sessionType = "";
             int playerIndex = 0;
-
-            // Let's actually bring the Discord client online
-            discord.Initialize();
 
             // Event hookers (funny name eh?)
             client.OnLapDataReceive += (packet) => Client_OnLapDataReceive(packet, discord);
@@ -33,28 +71,39 @@ namespace F1_23_Discord_RPC
             // When first booting system, reset the status by showing a "in menu" presence
             resetStatus(client, discord);
 
-            // Just stops the program from closing
-            while (true) { }
-
-            // To be added later
+            // Method for when receiving lap data - used for getting lap number
             void Client_OnLapDataReceive(LapDataPacket packet, DiscordRPC discord)
             {
+                playerIndex = packet.header.playerCarIndex;
+                raceCompletion = packet.lapData[playerIndex].lapDistance / packet.lapData[playerIndex].totalDistance;
+                lapNumber = packet.lapData[playerIndex].currentLapNum;
 
+                discord.SetPresence(new RichPresence
+                {
+                    Details = $"{sessionType} - {track}",
+                    State = $"Racing for {teamName} | Lap {lapNumber} / {totalLaps}",
+                    Assets = new Assets
+                    {
+                        LargeImageKey = $"",
+                        LargeImageText = $""
+                    },
+                    Timestamps = new Timestamps(DateTime.UtcNow)
+                });
             }
 
             // Method for when recieving participants data - used for getting team name
             void Client_OnParticipantsDataReceive(ParticipantsPacket packet, DiscordRPC discord)
             {
-                int playerIndex = packet.header.playerCarIndex;
-                int teamId = (int)packet.participants[playerIndex].teamId;
+                playerIndex = packet.header.playerCarIndex;
+                teamId = (int)packet.participants[playerIndex].teamId;
 
                 teamName = GetTeamNameFromId(teamId);
-            }   
+            }
 
             // Method for getting team name from team id (as F1 uses integers)
             string GetTeamNameFromId(int teamId)
             {
-                var teams = new List<dynamic>()
+                var teamlist = new List<dynamic>()
                 {
                     new { GameId = 0, Name = "Mercedes-AMG Petronas F1 Team" },
                     new { GameId = 1, Name = "Scuderia Ferrari" },
@@ -100,7 +149,7 @@ namespace F1_23_Discord_RPC
                     new { GameId = 117, Name = "Mercedes AMG GT Black Series" }
                 };
 
-                var team = teams.FirstOrDefault(t => t.GameId == teamId);
+                var team = teamlist.FirstOrDefault(t => t.GameId == teamId);
                 if (team != null)
                 {
                     Console.WriteLine($"Team ID: {teamId} - Team Name: {team.Name}");
@@ -109,12 +158,14 @@ namespace F1_23_Discord_RPC
                 return "";
             }
 
+            // Method for when receiving session data
             void Client_OnSessionDataReceive(SessionPacket packet, DiscordRPC discord, string teamName)
             {
-                var sessionType = "";
                 var ttaction = "";
-                var track = "";
-                var formulaType = packet.formula;
+                formulaType = (int)packet.formula;
+                totalLaps = (int)packet.totalLaps;
+
+                DateTime sessionDateTime = new DateTime(621355968000000000 + (long)(packet.header.sessionTime * 10_000_000));
 
                 // Case switch for checking track id and setting track name
                 switch ((int)packet.trackId)
@@ -279,9 +330,11 @@ namespace F1_23_Discord_RPC
                         {
                             LargeImageKey = $"",
                             LargeImageText = $"{track}"
-                        }
+                        },
+                        Timestamps = new Timestamps(sessionDateTime)
                     });
                 }
+
                 // Race
                 if ((int)packet.sessionType >= 10 && (int)packet.sessionType <= 12)
                 {
@@ -296,6 +349,7 @@ namespace F1_23_Discord_RPC
                         }
                     });
                 }
+
                 // Time Trial
                 if ((int)packet.sessionType == 13)
                 {
@@ -312,20 +366,31 @@ namespace F1_23_Discord_RPC
                 }
             }
 
-            void resetStatus(TelemetryClient client, DiscordRPC discord)
+            // Method for resetting status - checks if F1 23 is open before executing SetPresence
+            async void resetStatus(TelemetryClient client, DiscordRPC discord)
             {
-                discord.SetPresence(new RichPresence
+                Log.Information("Program initialized - waiting for RPC..");
+
+                while (true) { if (isF1Running) { break; } }
+
+                while (isF1Running)
                 {
-                    State = "In the main menu",
-                    Assets = new Assets
+                    Log.Information($"Connected to F1 23 - Updating status..");
+                    discord.SetPresence(new RichPresence
                     {
-                        LargeImageKey = "f1_23_logo",
-                        LargeImageText = "F1 23"
-                    },
-                    Timestamps = new Timestamps(DateTime.UtcNow)
-                });
-                Console.WriteLine($"Updated Discord Status: {discord.CurrentPresence.State}");
+                        State = "In the main menu",
+                        Assets = new Assets
+                        {
+                            LargeImageKey = "f1_23_logo",
+                            LargeImageText = "F1 23"
+                        },
+                        Timestamps = new Timestamps(DateTime.UtcNow)
+                    });
+                    Log.Information($"Updated Discord Status: {discord.CurrentPresence.State}");
+                    break;
+                }
             }
+            await Task.Delay(-1).ConfigureAwait(false);
         }
     }
 }

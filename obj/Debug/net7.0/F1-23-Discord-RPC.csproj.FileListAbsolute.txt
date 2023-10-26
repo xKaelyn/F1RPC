@@ -18,3 +18,6 @@ D:\Git Projects\F1-23-Discord-RPC\obj\Debug\net7.0\refint\F1-23-Discord-RPC.dll
 D:\Git Projects\F1-23-Discord-RPC\obj\Debug\net7.0\F1-23-Discord-RPC.pdb
 D:\Git Projects\F1-23-Discord-RPC\obj\Debug\net7.0\F1-23-Discord-RPC.genruntimeconfig.cache
 D:\Git Projects\F1-23-Discord-RPC\obj\Debug\net7.0\ref\F1-23-Discord-RPC.dll
+D:\Git Projects\F1-23-Discord-RPC\bin\Debug\net7.0\Serilog.dll
+D:\Git Projects\F1-23-Discord-RPC\bin\Debug\net7.0\Serilog.Sinks.Console.dll
+D:\Git Projects\F1-23-Discord-RPC\bin\Debug\net7.0\Serilog.Sinks.File.dll
