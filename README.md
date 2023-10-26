@@ -23,5 +23,5 @@ You are more than welcome to contribute to the code, just download **Visual Stud
 
 #### Built using:
 - Microsoft Visual Studio 2022
-- [f1-sharp](https://github.com/gvescu/f1-sharp)
-- [net-discord-rpc](https://github.com/HeroesReplay/net-discord-rpc)
+- [f1-sharp](https://github.com/gvescu/f1-sharp) by gvescu
+- [net-discord-rpc](https://github.com/HeroesReplay/net-discord-rpc) by HeroesReplay
