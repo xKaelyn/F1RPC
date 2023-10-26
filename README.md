@@ -1,1 +1,1 @@
-# F1-23-Discord-RPC
+# F1RPC
