@@ -1,13 +1,7 @@
-﻿using System;
-using System.ComponentModel.DataAnnotations;
-using System.Diagnostics;
-using System.Runtime.Intrinsics.X86;
-using F1Sharp;
-using F1Sharp.Data;
+﻿using F1Sharp;
 using F1Sharp.Packets;
 using NetDiscordRpc;
 using NetDiscordRpc.RPC;
-using Newtonsoft.Json;
 
 namespace F1_23_Discord_RPC
 {
@@ -15,8 +9,11 @@ namespace F1_23_Discord_RPC
     {
         static void Main(string[] args)
         {
-            var discord = new DiscordRPC("1166791756554178671");
-            var client = new TelemetryClient(20777);
+            // Connections to DiscordRPC and F1Sharp
+            DiscordRPC discord = new DiscordRPC("1166791756554178671"); // Will be thrown in a json file when ready to release
+            TelemetryClient client = new TelemetryClient(20777);
+
+            // Various variables to use
             int teamId = 0;
             string teamName = "";
             double raceCompletion = 0.0;
@@ -25,22 +22,27 @@ namespace F1_23_Discord_RPC
             int sessionType = 0;
             int playerIndex = 0;
 
+            // Let's actually bring the Discord client online
             discord.Initialize();
 
+            // Event hookers (funny name eh?)
             client.OnLapDataReceive += (packet) => Client_OnLapDataReceive(packet, discord);
             client.OnSessionDataReceive += (packet) => Client_OnSessionDataReceive(packet, discord, teamName);
             client.OnParticipantsDataReceive += (packet) => Client_OnParticipantsDataReceive(packet, discord);
 
+            // When first booting system, reset the status by showing a "in menu" presence
             resetStatus(client, discord);
 
             // Just stops the program from closing
             while (true) { }
 
+            // To be added later
             void Client_OnLapDataReceive(LapDataPacket packet, DiscordRPC discord)
             {
 
             }
 
+            // Method for when recieving participants data - used for getting team name
             void Client_OnParticipantsDataReceive(ParticipantsPacket packet, DiscordRPC discord)
             {
                 int playerIndex = packet.header.playerCarIndex;
@@ -49,6 +51,7 @@ namespace F1_23_Discord_RPC
                 teamName = GetTeamNameFromId(teamId);
             }   
 
+            // Method for getting team name from team id (as F1 uses integers)
             string GetTeamNameFromId(int teamId)
             {
                 var teams = new List<dynamic>()
