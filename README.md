@@ -14,8 +14,10 @@ A simple, but effective, Discord RPC program for EA's F1 23.
 You have two choices to using the program. You can either:
 - Use a pre-compiled exe file by clicking 'Releases' on the right and selecting the latest, or
 - Downloading the entire project, running the .sln file and building it yourself from source.
+  
 Once you've decided which method you wish to take, you then have to create a Discord Application by going [**here**](https://discord.com/developers/applications) and getting the application ID.
-**Note**: You will also need to upload the files from **assets/images** to your Discord Application to get the track icons on the RPC.
+**Note: You will also need to upload the files from assets/images to your Discord Application to get the track icons on the RPC.**
+
 **Do not change the names of the image files unless you also modify the code to reflect.**
 
 #### Contributing
