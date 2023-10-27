@@ -1,7 +1,5 @@
-﻿using System;
-using System.Diagnostics;
-using System.IO;
-using System.Security.AccessControl;
+﻿using System.Diagnostics;
+using F1RPC.Configuration;
 using F1Sharp;
 using F1Sharp.Packets;
 using NetDiscordRpc;
@@ -10,35 +8,18 @@ using Newtonsoft.Json;
 using Serilog;
 using Serilog.Events;
 using Serilog.Sinks.SystemConsole.Themes;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace F1RPC
 {
     public class F1RPC
     {
-        public DiscordRPC discord = new DiscordRPC("1166791756554178671"); // Will be thrown in a json file when ready to release
+        public DiscordRPC discord { get; private set; }
+        public static ConfigJson Config = new ConfigJson();
         public bool isF1Running = false;
 
         static void Main(string[] args)
         {
             var f1 = new F1RPC();
-            DiscordRPC discord = f1.discord;
-
-            Log.Logger = new LoggerConfiguration()
-                .WriteTo.Console(theme: SystemConsoleTheme.Literate, restrictedToMinimumLevel: LogEventLevel.Information)
-                .WriteTo.File("logs/log.txt", rollingInterval: RollingInterval.Day, restrictedToMinimumLevel: LogEventLevel.Information)
-                .MinimumLevel.Information()
-                .CreateLogger();
-
-            Log.Information("Logger initialized");
-
-            // Let's actually bring the Discord client online
-            discord.Initialize();
-
-            Log.Information("DiscordRPC initialized");
-
-            Log.Information("Program initialized. Waiting for F1 23 to be opened..");
-
             // Check if F1 23 is running, if not, wait until it is - when it is, initialize the program and break loop.
             while (true)
             {
@@ -53,6 +34,33 @@ namespace F1RPC
 
         public async Task Initialize()
         {
+            string json = await File.ReadAllTextAsync("assets/config/Configuration.json").ConfigureAwait(false);
+            using (var fs = File.OpenRead("assets/config/Configuration.json")) Config = JsonConvert.DeserializeObject<ConfigJson>(json);
+
+            var configJson = JsonConvert.DeserializeObject<ConfigJson>(json);
+
+            Log.Logger = new LoggerConfiguration()
+                .WriteTo.Console(theme: SystemConsoleTheme.Literate, restrictedToMinimumLevel: LogEventLevel.Information)
+                .WriteTo.File("logs/log.txt", outputTemplate: "{Timestamp:dd MMM yyyy - hh:mm:ss tt} [{Level:u3}] {Message:lj}{NewLine}{Exception}", rollingInterval: RollingInterval.Day, restrictedToMinimumLevel: LogEventLevel.Information)
+                .MinimumLevel.Information()
+                .CreateLogger();
+
+            Log.Information("Logger initialized");
+
+            if (configJson.AppId == "YOUR_APP_ID_HERE")
+            {
+                Log.Error("Please set your Discord App ID in assets/config/Configuration.json");
+                return;
+            }
+
+            discord = new DiscordRPC(configJson.AppId);
+            
+            // Let's actually bring the Discord client online
+            discord.Initialize();
+
+            Log.Information("DiscordRPC initialized");
+
+            Log.Information("Program initialized. Waiting for F1 23 to be opened..");
             TelemetryClient client = new TelemetryClient(20777);
 
             // Various variables to use
