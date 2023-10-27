@@ -20,12 +20,23 @@ namespace F1RPC
         static void Main(string[] args)
         {
             var f1 = new F1RPC();
+
+            Log.Logger = new LoggerConfiguration()
+                .WriteTo.Console(theme: SystemConsoleTheme.Literate, restrictedToMinimumLevel: LogEventLevel.Information)
+                .WriteTo.File("logs/log.txt", outputTemplate: "{Timestamp:dd MMM yyyy - hh:mm:ss tt} [{Level:u3}] {Message:lj}{NewLine}{Exception}", rollingInterval: RollingInterval.Day, restrictedToMinimumLevel: LogEventLevel.Information)
+                .MinimumLevel.Information()
+                .CreateLogger();
+
+            Log.Information("F1RPC | Version 1.0.0.0");
+            Log.Information("Waiting for F1 to be detected..");
+
             // Check if F1 23 is running, if not, wait until it is - when it is, initialize the program and break loop.
             while (true)
             {
                 f1.isF1Running = Process.GetProcessesByName("F1_23").Length > 0;
                 if (f1.isF1Running)
                 {
+                    Log.Information("F1 detected. Initializing..");
                     f1.Initialize().GetAwaiter().GetResult();
                     break;
                 }
@@ -39,13 +50,8 @@ namespace F1RPC
 
             var configJson = JsonConvert.DeserializeObject<ConfigJson>(json);
 
-            Log.Logger = new LoggerConfiguration()
-                .WriteTo.Console(theme: SystemConsoleTheme.Literate, restrictedToMinimumLevel: LogEventLevel.Information)
-                .WriteTo.File("logs/log.txt", outputTemplate: "{Timestamp:dd MMM yyyy - hh:mm:ss tt} [{Level:u3}] {Message:lj}{NewLine}{Exception}", rollingInterval: RollingInterval.Day, restrictedToMinimumLevel: LogEventLevel.Information)
-                .MinimumLevel.Information()
-                .CreateLogger();
-
-            Log.Information("Logger initialized");
+            Log.Information("Logger initialized.");
+            Log.Information("If you have any problems, please raise a issue on GitHub and upload your log file in the logs folder.");
 
             if (configJson.AppId == "YOUR_APP_ID_HERE")
             {
@@ -58,9 +64,9 @@ namespace F1RPC
             // Let's actually bring the Discord client online
             discord.Initialize();
 
-            Log.Information("DiscordRPC initialized");
+            Log.Information("DiscordRPC initialized.");
 
-            Log.Information("Program initialized. Waiting for F1 23 to be opened..");
+            Log.Information("Program initialized. Setting up client..");
             TelemetryClient client = new TelemetryClient(20777);
 
             // Various variables to use
