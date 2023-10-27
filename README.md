@@ -2,6 +2,11 @@
 
 A simple, but effective, Discord RPC program for EA's F1 23.
 
+#### Images
+**Final Classification**
+
+![Final Classification](https://github.com/xKaelyn/F1RPC/assets/20905508/d0c8a9df-4d81-4639-9a0c-5ad86262caf1)
+
 #### Features
 - Displays when the player is waiting in a lobby, and shows how many additional players are in the lobby.
 - Displays the player's current session in game (Practice 1, Qualifying 1, Race, Time Trial, etc).
