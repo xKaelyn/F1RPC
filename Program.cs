@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Diagnostics;
+using System.IO;
 using System.Security.AccessControl;
 using F1Sharp;
 using F1Sharp.Packets;
 using NetDiscordRpc;
 using NetDiscordRpc.RPC;
+using Newtonsoft.Json;
 using Serilog;
 using Serilog.Events;
 using Serilog.Sinks.SystemConsole.Themes;
@@ -57,6 +59,8 @@ namespace F1RPC
             int teamId = 0;
             string teamName = "";
             var track = "";
+            var currentTrackId = "";
+            var image = "";
             int lapNumber = 0;
             int totalLaps = 0;
             int formulaType = 0;
@@ -73,16 +77,9 @@ namespace F1RPC
             int weatherId = 0;
             string weatherConditions = "";
 
-            // Buttons for RPC
-            NetDiscordRpc.RPC.Button[] btns = new NetDiscordRpc.RPC.Button[]
-            {
-                        new NetDiscordRpc.RPC.Button() { Label = "Get F1 23", Url = "https://store.steampowered.com/app/2108330/F1_23/"},
-                        new NetDiscordRpc.RPC.Button() { Label = "Want this rich presence?", Url = "https://github.com/xKaelyn/F1RPC"}
-            };
-
             // Event hookers (funny name eh?)
             client.OnLapDataReceive += (packet) => Client_OnLapDataReceive(packet, discord);
-            client.OnSessionDataReceive += (packet) => Client_OnSessionDataReceive(packet, discord, teamName);
+            client.OnSessionDataReceive += (packet) => Client_OnSessionDataReceive(packet, discord, teamName, image);
             client.OnParticipantsDataReceive += (packet) => Client_OnParticipantsDataReceive(packet, discord);
             client.OnLobbyInfoDataReceive += (packet) => Client_OnLobbyInfoDataReceive(packet, discord);
             client.OnFinalClassificationDataReceive += (packet) => Client_OnFinalClassificationDataReceive(packet, discord);
@@ -98,14 +95,8 @@ namespace F1RPC
                 currentPosition = packet.lapData[playerIndex].carPosition;
                 
                 //Percentage for race completion - treat lap 1 as 0% and last lap as 100%
-                if (lapNumber == 1)
-                {
-                    raceCompletion = 0.0;
-                }
-                else
-                {
-                    raceCompletion = Math.Round((double)(lapNumber - 1) / (double)(totalLaps - 1) * 100, 2);
-                }
+                if (lapNumber == 1) { raceCompletion = 0.0; }
+                else { raceCompletion = Math.Round((double)(lapNumber - 1) / (double)(totalLaps - 1) * 100, 2); }
             }
 
             // Method for when recieving lobby info
@@ -134,8 +125,7 @@ namespace F1RPC
                     {
                         LargeImageKey = $"",
                         LargeImageText = $""
-                    },
-                    Buttons = btns
+                    }
                 });
             }
 
@@ -156,10 +146,9 @@ namespace F1RPC
                         State = $"Racing for {teamName} | {finalPoints} points earned",
                         Assets = new Assets
                         {
-                            LargeImageKey = $"",
+                            LargeImageKey = $"{currentTrackId}",
                             LargeImageText = $"{track}"
-                        },
-                        Buttons = btns
+                        }
                     });
                 }
             }
@@ -284,15 +273,16 @@ namespace F1RPC
 
             // Method for when receiving session data
             // Session data is received twice a second until the session is destroyed. It only contains data about the ongoing session.
-            void Client_OnSessionDataReceive(SessionPacket packet, DiscordRPC discord, string teamName)
+            void Client_OnSessionDataReceive(SessionPacket packet, DiscordRPC discord, string teamName, string image)
             {
                 formulaType = (int)packet.formula;
                 totalLaps = packet.totalLaps;
                 weatherId = (int)packet.weather;
+                currentTrackId = packet.trackId.ToString().ToLower();
 
                 weatherConditions = GetWeatherConditions(weatherId);
 
-                // Case switch for checking track id and setting track name
+                // Case switch for checking track id, setting track name and setting track image
                 switch ((int)packet.trackId)
                 {
                     case 0:
@@ -452,7 +442,7 @@ namespace F1RPC
                         State = $"Racing for {teamName} | Conditions: {weatherConditions}",
                         Assets = new Assets
                         {
-                            LargeImageKey = $"",
+                            LargeImageKey = $"{currentTrackId}",
                             LargeImageText = $"{track}"
                         }
                     });
@@ -467,11 +457,11 @@ namespace F1RPC
                         State = $"Racing for {teamName} | P{currentPosition} / P{totalParticipants} | Conditions: {weatherConditions}",
                         Assets = new Assets
                         {
-                            LargeImageKey = $"",
+                            LargeImageKey = $"{currentTrackId}",
                             LargeImageText = $"{track}"
-                        },
-                        Buttons = btns
+                        }
                     });
+                    Log.Information($"assets/images/{packet.trackId.ToString().ToLower()}.png");
                 }
 
                 // Time Trial
@@ -482,10 +472,9 @@ namespace F1RPC
                         Details = $"{sessionType} - {track}",
                         Assets = new Assets
                         {
-                            LargeImageKey = $"",
+                            LargeImageKey = $"{currentTrackId}",
                             LargeImageText = $"{track}"
-                        },
-                        Buttons = btns
+                        }
                     });
                 }
             }
@@ -508,8 +497,7 @@ namespace F1RPC
                             LargeImageKey = "f1_23_logo",
                             LargeImageText = "F1 23"
                         },
-                        Timestamps = new Timestamps(DateTime.UtcNow),
-                        Buttons = btns
+                        Timestamps = new Timestamps(DateTime.UtcNow)
                     });
                     Log.Information($"Updated Discord Status: {discord.CurrentPresence.Details}");
                     break;
