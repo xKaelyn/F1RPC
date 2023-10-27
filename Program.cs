@@ -82,7 +82,7 @@ namespace F1RPC
             client.OnSessionDataReceive += (packet) => Client_OnSessionDataReceive(packet, discord, teamName, image);
             client.OnParticipantsDataReceive += (packet) => Client_OnParticipantsDataReceive(packet, discord);
             client.OnLobbyInfoDataReceive += (packet) => Client_OnLobbyInfoDataReceive(packet, discord);
-            client.OnFinalClassificationDataReceive += (packet) => Client_OnFinalClassificationDataReceive(packet, discord);
+            client.OnFinalClassificationDataReceive += (packet) => Client_OnFinalClassificationDataReceiveAsync(packet, discord);
 
             // When first booting system, reset the status by showing a "in menu" presence
             resetStatus(client, discord);
@@ -123,27 +123,30 @@ namespace F1RPC
                     State = $"Waiting in the lobby with {lobbyPlayerCount - 1} other {playerText}",
                     Assets = new Assets
                     {
-                        LargeImageKey = $"",
-                        LargeImageText = $""
+                        LargeImageKey = $"f1_23_logo",
+                        LargeImageText = $"F1 23"
                     }
                 });
             }
 
             // Method for when recieving final classification data - used for getting final position
             // Final Classification data is only received once once the final scoreboard is shown to the player.
-            void Client_OnFinalClassificationDataReceive(FinalClassificationPacket packet, DiscordRPC discord)
+            // Method is async to allow for a Task.Delay at the end of the method as we need to assume the user is in the menus - we don't have a way of knowing if they are or not.
+            async Task Client_OnFinalClassificationDataReceiveAsync(FinalClassificationPacket packet, DiscordRPC discord)
             {
                 finalPosition = packet.classificationData[playerIndex].position;
                 finalGridPosition = packet.classificationData[playerIndex].gridPosition;
                 finalPoints = packet.classificationData[playerIndex].points;
                 finalResultStatus = (int)packet.classificationData[playerIndex].resultStatus;
 
-                if (finalResultStatus == 3)
+                // To-Do: Add session best lap time to presence
+                // If user finished a session, but it's not a race
+                if (sessionType != "Race" || sessionType != "Race 2" || sessionType != "Race 3") 
                 {
                     discord.SetPresence(new RichPresence
                     {
-                        Details = $"Finished: P{finalPosition} / P{totalParticipants} | Started: P{finalGridPosition} | Track: {track}",
-                        State = $"Racing for {teamName} | {finalPoints} points earned",
+                        Details = $"Session Completed | Track: {track}",
+                        State = $"Racing for {teamName}",
                         Assets = new Assets
                         {
                             LargeImageKey = $"{currentTrackId}",
@@ -151,6 +154,102 @@ namespace F1RPC
                         }
                     });
                 }
+
+                // If user finished the race
+                if (finalResultStatus == 3)
+                {
+                    if (sessionType != "Race" || sessionType != "Race 2" || sessionType != "Race 3")
+                    {
+                        discord.SetPresence(new RichPresence
+                        {
+                            Details = $"Session Completed | Track: {track}",
+                            State = $"Racing for {teamName}",
+                            Assets = new Assets
+                            {
+                                LargeImageKey = $"{currentTrackId}",
+                                LargeImageText = $"{track}"
+                            }
+                        });
+                    }
+                    else
+                    {
+                        discord.SetPresence(new RichPresence
+                        {
+                            Details = $"Finished: P{finalPosition} / P{totalParticipants} | Started: P{finalGridPosition} | Track: {track}",
+                            State = $"Racing for {teamName} | {finalPoints} points earned",
+                            Assets = new Assets
+                            {
+                                LargeImageKey = $"{currentTrackId}",
+                                LargeImageText = $"{track}"
+                            }
+                        });
+                    }
+                }
+
+                // If user did not finish the race
+                if (finalResultStatus == 4)
+                {
+                    discord.SetPresence(new RichPresence
+                    {
+                        Details = $"DNF | Started: P{finalGridPosition} | Track: {track}",
+                        State = $"Racing for {teamName}",
+                        Assets = new Assets
+                        {
+                            LargeImageKey = $"{currentTrackId}",
+                            LargeImageText = $"{track}"
+                        }
+                    });
+                }
+
+                // If user was disqualified
+                if (finalResultStatus == 5)
+                {
+                    discord.SetPresence(new RichPresence
+                    {
+                        Details = $"Disqualified | Started: P{finalGridPosition} | Track: {track}",
+                        State = $"Racing for {teamName}",
+                        Assets = new Assets
+                        {
+                            LargeImageKey = $"{currentTrackId}",
+                            LargeImageText = $"{track}"
+                        }
+                    });
+                }
+
+                // If user was not classified
+                if (finalResultStatus == 6)
+                {
+                    discord.SetPresence(new RichPresence
+                    {
+                        Details = $"Not Classified | Track: {track}",
+                        State = $"Racing for {teamName}",
+                        Assets = new Assets
+                        {
+                            LargeImageKey = $"{currentTrackId}",
+                            LargeImageText = $"{track}"
+                        }
+                    });
+                }
+                
+                // If user retired
+                if (finalResultStatus == 7)
+                {
+                    discord.SetPresence(new RichPresence
+                    {
+                        Details = $"Retired | Started: P{finalGridPosition} | Track: {track}",
+                        State = $"Racing for {teamName}",
+                        Assets = new Assets
+                        {
+                            LargeImageKey = $"{currentTrackId}",
+                            LargeImageText = $"{track}"
+                        }
+                    });
+                }
+
+                // Wait 15 seconds
+                await Task.Delay(15000);
+                // Assume the player is in the menus - no way of actually knowing if they are or not
+                resetStatus(client, discord);
             }
 
             // Method for when recieving participants data - used for getting team name
@@ -273,7 +372,7 @@ namespace F1RPC
 
             // Method for when receiving session data
             // Session data is received twice a second until the session is destroyed. It only contains data about the ongoing session.
-            void Client_OnSessionDataReceive(SessionPacket packet, DiscordRPC discord, string teamName, string image)
+            async void Client_OnSessionDataReceive(SessionPacket packet, DiscordRPC discord, string teamName, string image)
             {
                 formulaType = (int)packet.formula;
                 totalLaps = packet.totalLaps;
@@ -491,7 +590,7 @@ namespace F1RPC
                     Log.Information($"Connected. Updating status..");
                     discord.SetPresence(new RichPresence
                     {
-                        Details = "In the menus",
+                        Details = "Idle",
                         Assets = new Assets
                         {
                             LargeImageKey = "f1_23_logo",
