@@ -4,15 +4,12 @@ A simple, but effective, Discord RPC program for EA's F1 23.
 
 #### Images
 **Idle**
-
 ![image](https://github.com/xKaelyn/F1RPC/assets/20905508/70b8ef9f-d09d-46f3-a63d-9bdaf34743d9)
 
 **In Race**
-
 ![image](https://github.com/xKaelyn/F1RPC/assets/20905508/7cd153dc-9d35-4d0e-830c-45b9de31d362)
 
 **Final Classification**
-
 ![image](https://github.com/xKaelyn/F1RPC/assets/20905508/c462ef47-cad0-4f26-b58b-7bdb32e8c2ba)
 
 
