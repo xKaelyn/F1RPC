@@ -36,6 +36,13 @@ Create a Discord Application by going [**here**](https://discord.com/developers/
 When downloaded, extract to a location of your choice and run the exe file. It can be ran either before or after booting F1, it will detect the process and initialize.
 Simple as that; enjoy the RPC!
 
+#### Using multiple programs at the same time
+If you're using multiple programs for the UDP telemetry at the same time (e.g SimHub, F1Laps etc), you can use SimHub to forward the UDP telemetry to allow it to be broadcast to separate ports at the same time.
+- In Simhub select your game and press "Game Config".
+- Set UDP forwarding to a different UDP port (like 20780).
+- Set this UDP port in the Configuration.json file.
+- Restart F1RPC.
+
 **Do not change the names of the image files unless you also modify the code to reflect.**
 
 #### Contributing
