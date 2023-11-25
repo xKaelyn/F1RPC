@@ -1,3 +1,4 @@
 {
-  "appid": "YOUR_APP_ID_HERE"
+  "appid": "YOUR_APP_ID_HERE",
+  "port":  20777
 }
