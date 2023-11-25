@@ -3,9 +3,18 @@
 A simple, but effective, Discord RPC program for EA's F1 23.
 
 #### Images
+**Idle**
+
+![image](https://github.com/xKaelyn/F1RPC/assets/20905508/70b8ef9f-d09d-46f3-a63d-9bdaf34743d9)
+
+**In Race**
+
+![image](https://github.com/xKaelyn/F1RPC/assets/20905508/7cd153dc-9d35-4d0e-830c-45b9de31d362)
+
 **Final Classification**
 
-![Final Classification](https://github.com/xKaelyn/F1RPC/assets/20905508/d0c8a9df-4d81-4639-9a0c-5ad86262caf1)
+![image](https://github.com/xKaelyn/F1RPC/assets/20905508/c462ef47-cad0-4f26-b58b-7bdb32e8c2ba)
+
 
 #### Features
 - Displays when the player is waiting in a lobby, and shows how many additional players are in the lobby.
@@ -19,9 +28,13 @@ A simple, but effective, Discord RPC program for EA's F1 23.
 You have two choices to using the program. You can either:
 - Use a pre-compiled exe file by clicking 'Releases' on the right and selecting the latest, or
 - Downloading the entire project, running the .sln file and building it yourself from source.
-  
-Once you've decided which method you wish to take, you then have to create a Discord Application by going [**here**](https://discord.com/developers/applications) and getting the application ID.
+
+#### Using the pre-compiled files
+Download the latest version from the **Releases** section on the right hand side and download the zip file.
+Create a Discord Application by going [**here**](https://discord.com/developers/applications) and getting the application ID.
 **Note: You will also need to upload the files from assets/images to your Discord Application to get the track icons on the RPC.**
+When downloaded, extract to a location of your choice and run the exe file. It can be ran either before or after booting F1, it will detect the process and initialize.
+Simple as that; enjoy the RPC!
 
 **Do not change the names of the image files unless you also modify the code to reflect.**
 
