@@ -33,6 +33,7 @@ namespace F1RPC
             // Check if F1 23 is running, if not, wait until it is - when it is, initialize the program and break loop.
             while (true)
             {
+                // To-Do: Replace with a check so it can also work with consoles.
                 f1.isF1Running = Process.GetProcessesByName("F1_23").Length > 0;
                 if (f1.isF1Running)
                 {
@@ -68,7 +69,9 @@ namespace F1RPC
             Log.Information("DiscordRPC initialized.");
 
             Log.Information("Program initialized. Setting up client..");
+
             TelemetryClient client = new TelemetryClient(port);
+
             Log.Information($"Client initialized. Listening on port {port}.");
 
             // Various variables to use
@@ -92,13 +95,21 @@ namespace F1RPC
             int finalResultStatus = 0;
             int weatherId = 0;
             string weatherConditions = "";
+            var button = new NetDiscordRpc.RPC.Button[]
+            {
+                new NetDiscordRpc.RPC.Button()
+                {
+                    Label = "Powered by F1RPC",
+                    Url = "https://github.com/xKaelyn/F1RPC"
+                }
+            };
 
             // Event hookers (funny name eh?)
             client.OnLapDataReceive += (packet) => Client_OnLapDataReceive(packet, discord);
             client.OnSessionDataReceive += (packet) => Client_OnSessionDataReceive(packet, discord, teamName, image);
             client.OnParticipantsDataReceive += (packet) => Client_OnParticipantsDataReceive(packet, discord);
             client.OnLobbyInfoDataReceive += (packet) => Client_OnLobbyInfoDataReceive(packet, discord);
-            client.OnFinalClassificationDataReceive += (packet) => Client_OnFinalClassificationDataReceiveAsync(packet, discord);
+            client.OnFinalClassificationDataReceive += async (packet) => await Client_OnFinalClassificationDataReceiveAsync(packet, discord);
 
             // When first booting system, reset the status by showing a "in menu" presence
             resetStatus(client, discord);
@@ -110,7 +121,7 @@ namespace F1RPC
                 lapNumber = packet.lapData[playerIndex].currentLapNum;
                 currentPosition = packet.lapData[playerIndex].carPosition;
                 
-                //Percentage for race completion - treat lap 1 as 0% and last lap as 100%
+                // Percentage for race completion - treat lap 1 as 0% and last lap as 100%
                 if (lapNumber == 1) { raceCompletion = 0.0; }
                 else { raceCompletion = Math.Round((double)(lapNumber - 1) / (double)(totalLaps - 1) * 100, 2); }
             }
@@ -135,13 +146,14 @@ namespace F1RPC
                 // Set presence to "Waiting in the lobby with x other players", -1 because the player itself is not counted
                 discord.SetPresence(new RichPresence
                 {
-                    Details = "In the menus",
-                    State = $"Waiting in the lobby with {lobbyPlayerCount - 1} other {playerText}",
+                    Details = "In a multiplayer lobby",
+                    State = $"With {lobbyPlayerCount - 1} other {playerText}",
                     Assets = new Assets
                     {
                         LargeImageKey = $"f1_23_logo",
                         LargeImageText = $"F1 23"
-                    }
+                    },
+                    Buttons = button
                 });
             }
 
@@ -167,7 +179,8 @@ namespace F1RPC
                         {
                             LargeImageKey = $"{currentTrackId}",
                             LargeImageText = $"{track}"
-                        }
+                        },
+                        Buttons = button
                     });
                 }
 
@@ -184,7 +197,8 @@ namespace F1RPC
                             {
                                 LargeImageKey = $"{currentTrackId}",
                                 LargeImageText = $"{track}"
-                            }
+                            },
+                            Buttons = button
                         });
                     }
                     else
@@ -197,7 +211,8 @@ namespace F1RPC
                             {
                                 LargeImageKey = $"{currentTrackId}",
                                 LargeImageText = $"{track}"
-                            }
+                            },
+                            Buttons = button
                         });
                     }
                 }
@@ -213,7 +228,8 @@ namespace F1RPC
                         {
                             LargeImageKey = $"{currentTrackId}",
                             LargeImageText = $"{track}"
-                        }
+                        },
+                        Buttons = button
                     });
                 }
 
@@ -228,7 +244,8 @@ namespace F1RPC
                         {
                             LargeImageKey = $"{currentTrackId}",
                             LargeImageText = $"{track}"
-                        }
+                        },
+                        Buttons = button
                     });
                 }
 
@@ -243,7 +260,8 @@ namespace F1RPC
                         {
                             LargeImageKey = $"{currentTrackId}",
                             LargeImageText = $"{track}"
-                        }
+                        },
+                        Buttons = button
                     });
                 }
                 
@@ -258,7 +276,8 @@ namespace F1RPC
                         {
                             LargeImageKey = $"{currentTrackId}",
                             LargeImageText = $"{track}"
-                        }
+                        },
+                        Buttons = button
                     });
                 }
 
@@ -570,7 +589,8 @@ namespace F1RPC
                         {
                             LargeImageKey = $"{currentTrackId}",
                             LargeImageText = $"{track}"
-                        }
+                        },
+                        Buttons = button
                     });
                 }
 
@@ -585,7 +605,8 @@ namespace F1RPC
                         {
                             LargeImageKey = $"{currentTrackId}",
                             LargeImageText = $"{track}"
-                        }
+                        },
+                        Buttons = button
                     });
                     Log.Information($"assets/images/{packet.trackId.ToString().ToLower()}.png");
                 }
@@ -600,7 +621,8 @@ namespace F1RPC
                         {
                             LargeImageKey = $"{currentTrackId}",
                             LargeImageText = $"{track}"
-                        }
+                        },
+                        Buttons = button
                     });
                 }
             }
@@ -623,7 +645,8 @@ namespace F1RPC
                             LargeImageKey = "f1_23_logo",
                             LargeImageText = "F1 23"
                         },
-                        Timestamps = new Timestamps(DateTime.UtcNow)
+                        Timestamps = new Timestamps(DateTime.UtcNow),
+                        Buttons = button
                     });
                     Log.Information($"Updated Discord Status: {discord.CurrentPresence.Details}");
                     break;
