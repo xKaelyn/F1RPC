@@ -67,7 +67,7 @@ namespace F1RPC
             Log.Information("DiscordRPC initialized.");
 
             Log.Information("Program initialized. Setting up client..");
-            TelemetryClient client = new TelemetryClient(20777);
+            TelemetryClient client = new TelemetryClient(20850);
 
             // Various variables to use
             int teamId = 0;
@@ -346,7 +346,18 @@ namespace F1RPC
                     new { GameId = 137, Name = "Van Amersfoort Racing (2022)" },
                     new { GameId = 138, Name = "Trident (2022)" },
                     new { GameId = 139, Name = "Hitech (2022)" },
-                    new { GameId = 140, Name = "Art GP (2022)" }
+                    new { GameId = 140, Name = "Art GP (2022)" },
+                    new { GameId = 143, Name = "ART Grand Prix (2023)"},
+                    new { GameId = 144, Name = "Campos Racing (2023)"},
+                    new { GameId = 145, Name = "Carlin (2023)"},
+                    new { GameId = 146, Name = "PHM Racing (2023)"},
+                    new { GameId = 147, Name = "DAMS (2023)"},
+                    new { GameId = 148, Name = "Hitech (2023)"},
+                    new { GameId = 149, Name = "MP Motorsport (2023)"},
+                    new { GameId = 150, Name = "Prema (2023)"},
+                    new { GameId = 151, Name = "Trident (2023)"},
+                    new { GameId = 152, Name = "Van Amersfoort Racing (2023)"},
+                    new { GameId = 153, Name = "Uni-Virtuosi (2023)"}
                 };
 
                 var team = teamlist.FirstOrDefault(t => t.GameId == teamId);
