@@ -3,10 +3,20 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net7.0</TargetFramework>
-    <RootNamespace>F1_23_Discord_RPC</RootNamespace>
+    <RootNamespace>F1RPC</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <ApplicationIcon>zXlCFdHU_400x400.ico</ApplicationIcon>
+    <SignAssembly>False</SignAssembly>
+    <Authors></Authors>
+    <Company>$(Authors)</Company>
+    <AssemblyVersion>1.0.0.1</AssemblyVersion>
+    <FileVersion>1.0.0.1</FileVersion>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="zXlCFdHU_400x400.ico" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="F1Sharp" Version="1.3.0" />
