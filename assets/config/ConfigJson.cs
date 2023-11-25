@@ -6,5 +6,8 @@ namespace F1RPC.Configuration
     {
         [JsonProperty("appid")]
         public string AppId { get; private set; }
+
+        [JsonProperty("port")]
+        public int Port { get; private set; }
     }
 }
