@@ -27,7 +27,7 @@ namespace F1RPC
                 .MinimumLevel.Information()
                 .CreateLogger();
 
-            Log.Information("F1RPC | Version 1.0.0.0");
+            Log.Information("F1RPC | Version 1.0.0.1");
             Log.Information("Waiting for F1 to be detected..");
 
             // Check if F1 23 is running, if not, wait until it is - when it is, initialize the program and break loop.
@@ -49,6 +49,7 @@ namespace F1RPC
             using (var fs = File.OpenRead("assets/config/Configuration.json")) Config = JsonConvert.DeserializeObject<ConfigJson>(json);
 
             var configJson = JsonConvert.DeserializeObject<ConfigJson>(json);
+            var port = configJson.Port;
 
             Log.Information("Logger initialized.");
             Log.Information("If you have any problems, please raise a issue on GitHub and upload your log file in the logs folder.");
@@ -67,7 +68,8 @@ namespace F1RPC
             Log.Information("DiscordRPC initialized.");
 
             Log.Information("Program initialized. Setting up client..");
-            TelemetryClient client = new TelemetryClient(20850);
+            TelemetryClient client = new TelemetryClient(port);
+            Log.Information($"Client initialized. Listening on port {port}.");
 
             // Various variables to use
             int teamId = 0;
