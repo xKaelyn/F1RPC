@@ -13,9 +13,9 @@ namespace F1RPC
 {
     public class F1RPC
     {
-        public DiscordRPC discord { get; private set; }
-        public static ConfigJson Config = new ConfigJson();
-        public bool isF1Running = false;
+        public DiscordRPC? discord { get; private set; }
+        public static ConfigJson Config { get; private set; } = new ConfigJson();
+        private bool isF1Running;
 
         static void Main(string[] args)
         {
@@ -79,7 +79,6 @@ namespace F1RPC
             string teamName = "";
             var track = "";
             var currentTrackId = "";
-            var image = "";
             int lapNumber = 0;
             int totalLaps = 0;
             int formulaType = 0;
@@ -97,7 +96,7 @@ namespace F1RPC
             string weatherConditions = "";
             var button = new NetDiscordRpc.RPC.Button[]
             {
-                new NetDiscordRpc.RPC.Button()
+                new NetDiscordRpc.RPC.Button
                 {
                     Label = "Powered by F1RPC",
                     Url = "https://github.com/xKaelyn/F1RPC"
@@ -105,17 +104,17 @@ namespace F1RPC
             };
 
             // Event hookers (funny name eh?)
-            client.OnLapDataReceive += (packet) => Client_OnLapDataReceive(packet, discord);
-            client.OnSessionDataReceive += (packet) => Client_OnSessionDataReceive(packet, discord, teamName, image);
-            client.OnParticipantsDataReceive += (packet) => Client_OnParticipantsDataReceive(packet, discord);
+            client.OnLapDataReceive += (packet) => Client_OnLapDataReceive(packet);
+            client.OnSessionDataReceive += (packet) => Client_OnSessionDataReceive(packet, discord, teamName);
+            client.OnParticipantsDataReceive += (packet) => Client_OnParticipantsDataReceive(packet);
             client.OnLobbyInfoDataReceive += (packet) => Client_OnLobbyInfoDataReceive(packet, discord);
             client.OnFinalClassificationDataReceive += async (packet) => await Client_OnFinalClassificationDataReceiveAsync(packet, discord);
 
             // When first booting system, reset the status by showing a "in menu" presence
-            resetStatus(client, discord);
+            resetStatus(discord);
 
             // Method for when receiving lap data - used for getting lap number
-            void Client_OnLapDataReceive(LapDataPacket packet, DiscordRPC discord)
+            void Client_OnLapDataReceive(LapDataPacket packet)
             {
                 playerIndex = packet.header.playerCarIndex;
                 lapNumber = packet.lapData[playerIndex].currentLapNum;
@@ -284,12 +283,12 @@ namespace F1RPC
                 // Wait 15 seconds
                 await Task.Delay(15000);
                 // Assume the player is in the menus - no way of actually knowing if they are or not
-                resetStatus(client, discord);
+                resetStatus(discord);
             }
 
             // Method for when recieving participants data - used for getting team name
             // Participant data is received once every 5 seconds.
-            void Client_OnParticipantsDataReceive(ParticipantsPacket packet, DiscordRPC discord)
+            void Client_OnParticipantsDataReceive(ParticipantsPacket packet)
             {
                 playerIndex = packet.header.playerCarIndex;
                 totalParticipants = packet.numActiveCars;
@@ -301,7 +300,7 @@ namespace F1RPC
             // Method for getting team name from team id (as F1 uses integers)
             string GetTeamNameFromId(int teamId)
             {
-                var teamlist = new List<dynamic>()
+                var teamlist = new List<dynamic>
                 {
                     new { GameId = 0, Name = "Mercedes-AMG Petronas F1 Team" },
                     new { GameId = 1, Name = "Scuderia Ferrari" },
@@ -412,13 +411,16 @@ namespace F1RPC
                     case 5:
                         weatherConditions = "Storm";
                         break;
+                    default:
+                        Log.Fatal("Unknown weather ID.");
+                        throw new Exception("Unknown weather ID");
                 }
                 return weatherConditions;
             }
 
             // Method for when receiving session data
             // Session data is received twice a second until the session is destroyed. It only contains data about the ongoing session.
-            async void Client_OnSessionDataReceive(SessionPacket packet, DiscordRPC discord, string teamName, string image)
+            void Client_OnSessionDataReceive(SessionPacket packet, DiscordRPC discord, string teamName)
             {
                 formulaType = (int)packet.formula;
                 totalLaps = packet.totalLaps;
@@ -529,6 +531,9 @@ namespace F1RPC
                     case 32:
                         track = "Qatar: Losail";
                         break;
+                    default:
+                        Log.Fatal("Unknown track ID.");
+                        throw new Exception("Unknown track ID");
                 }
 
                 // Case Switch for Packet Session Type
@@ -576,6 +581,9 @@ namespace F1RPC
                     case 13:
                         sessionType = "Time Trial";
                         break;
+                    default:
+                        Log.Fatal("Unknown session type.");
+                        throw new Exception("Unknown session type");
                 }
 
                 // Practice / Qualifying
@@ -628,7 +636,7 @@ namespace F1RPC
             }
 
             // Method for resetting status - checks if F1 23 is open before executing SetPresence
-            async void resetStatus(TelemetryClient client, DiscordRPC discord)
+            void resetStatus(DiscordRPC discord)
             {
                 Log.Information("F1 23 detected. Connecting..");
 
