@@ -139,7 +139,7 @@ namespace F1RPC
             int playerIndex = 0;
             int currentPosition = 0;
             int totalParticipants = 0;
-            string playerPlatform = 0;
+            string playerPlatform = "";
             double raceCompletion = 0.0;
             int lobbyPlayerCount = 0;
             int finalPosition = 0;
