@@ -17,7 +17,6 @@ namespace F1RPC
     {
         public DiscordRPC? discord { get; private set; }
         public static ConfigJson Config { get; private set; } = new ConfigJson();
-        private bool isF1Running;
 
         static void Main(string[] args)
         {
