@@ -24,23 +24,39 @@ namespace F1RPC
             var f1 = new F1RPC();
 
             Log.Logger = new LoggerConfiguration()
-                .WriteTo.Console(theme: SystemConsoleTheme.Literate, restrictedToMinimumLevel: LogEventLevel.Information)
-                .WriteTo.File("logs/log.txt", outputTemplate: "{Timestamp:dd MMM yyyy - hh:mm:ss tt} [{Level:u3}] {Message:lj}{NewLine}{Exception}", rollingInterval: RollingInterval.Day, restrictedToMinimumLevel: LogEventLevel.Information)
-                .MinimumLevel.Information()
+                .WriteTo
+                .Console(
+                    theme: SystemConsoleTheme.Literate,
+                    restrictedToMinimumLevel: LogEventLevel.Information
+                )
+                .WriteTo
+                .File(
+                    "logs/log.txt",
+                    outputTemplate: "{Timestamp:dd MMM yyyy - hh:mm:ss tt} [{Level:u3}] {Message:lj}{NewLine}{Exception}",
+                    rollingInterval: RollingInterval.Day,
+                    restrictedToMinimumLevel: LogEventLevel.Information
+                )
+                .MinimumLevel
+                .Information()
                 .CreateLogger();
 
             Log.Information("F1RPC | Version 1.0.0.1");
             Log.Information("Program booting..");
 
-            try {
+            try
+            {
                 f1.Initialize().GetAwaiter().GetResult();
             }
             catch (Exception ex)
             {
-                if (ex.Message == "Address already in use") {
-                    Log.Fatal($"Port {Config.Port} is already in use. Please either close the program using it and try again or choose another port in the Configuration.json file.");
+                if (ex.Message == "Address already in use")
+                {
+                    Log.Fatal(
+                        $"Port {Config.Port} is already in use. Please either close the program using it and try again or choose another port in the Configuration.json file."
+                    );
                 }
-                else {
+                else
+                {
                     Log.Fatal($"Exception occured: {ex.Message}");
                 }
             }
@@ -57,10 +73,17 @@ namespace F1RPC
             // Not the program directory.
             if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
             {
-                var projectDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+                var projectDirectory = Path.GetDirectoryName(
+                    Assembly.GetExecutingAssembly().Location
+                );
 
-                json = await File.ReadAllTextAsync($"{projectDirectory}/assets/config/Configuration.json").ConfigureAwait(false);
-                var configPath = String.Format($"{projectDirectory}/assets/config/Configuration.json");
+                json = await File.ReadAllTextAsync(
+                        $"{projectDirectory}/assets/config/Configuration.json"
+                    )
+                    .ConfigureAwait(false);
+                var configPath = String.Format(
+                    $"{projectDirectory}/assets/config/Configuration.json"
+                );
 
                 using (var fs = File.OpenRead(configPath))
                 {
@@ -68,16 +91,21 @@ namespace F1RPC
                 }
             }
             // If running Windows, use the previous code.
-            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
-                json = await File.ReadAllTextAsync("assets/config/Configuration.json").ConfigureAwait(false);
-                using (var fs = File.OpenRead("assets/config/Configuration.json")) Config = JsonConvert.DeserializeObject<ConfigJson>(json);
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                json = await File.ReadAllTextAsync("assets/config/Configuration.json")
+                    .ConfigureAwait(false);
+                using (var fs = File.OpenRead("assets/config/Configuration.json"))
+                    Config = JsonConvert.DeserializeObject<ConfigJson>(json);
             }
 
             configJson = JsonConvert.DeserializeObject<ConfigJson>(json);
             port = configJson.Port;
 
             Log.Information("Logger initialized.");
-            Log.Information("If you have any problems, please raise a issue on GitHub and upload your log file found in the logs folder.");
+            Log.Information(
+                "If you have any problems, please raise a issue on GitHub and upload your log file found in the logs folder."
+            );
 
             if (configJson.AppId == "YOUR_APP_ID_HERE")
             {
@@ -86,7 +114,7 @@ namespace F1RPC
             }
 
             discord = new DiscordRPC(configJson.AppId);
-            
+
             // Let's actually bring the Discord client online
             discord.Initialize();
 
@@ -111,6 +139,7 @@ namespace F1RPC
             int playerIndex = 0;
             int currentPosition = 0;
             int totalParticipants = 0;
+            string playerPlatform = 0;
             double raceCompletion = 0.0;
             int lobbyPlayerCount = 0;
             int finalPosition = 0;
@@ -128,15 +157,19 @@ namespace F1RPC
                 }
             };
 
-            // Event hookers (funny name eh?)
-            client.OnLapDataReceive += (packet) => Client_OnLapDataReceive(packet);
-            client.OnSessionDataReceive += (packet) => Client_OnSessionDataReceive(packet, discord, teamName);
-            client.OnParticipantsDataReceive += (packet) => Client_OnParticipantsDataReceive(packet);
-            client.OnLobbyInfoDataReceive += (packet) => Client_OnLobbyInfoDataReceive(packet, discord);
-            client.OnFinalClassificationDataReceive += async (packet) => await Client_OnFinalClassificationDataReceiveAsync(packet, discord);
-
             // When first booting system, reset the status by showing a "in menu" presence
             resetStatus(discord);
+
+            // Event hookers (funny name eh?)
+            client.OnLapDataReceive += (packet) => Client_OnLapDataReceive(packet);
+            client.OnSessionDataReceive += (packet) =>
+                Client_OnSessionDataReceive(packet, discord, teamName);
+            client.OnParticipantsDataReceive += (packet) =>
+                Client_OnParticipantsDataReceive(packet);
+            client.OnLobbyInfoDataReceive += (packet) =>
+                Client_OnLobbyInfoDataReceive(packet, discord);
+            client.OnFinalClassificationDataReceive += async (packet) =>
+                await Client_OnFinalClassificationDataReceiveAsync(packet, discord);
 
             // Method for when receiving lap data - used for getting lap number
             void Client_OnLapDataReceive(LapDataPacket packet)
@@ -144,10 +177,19 @@ namespace F1RPC
                 playerIndex = packet.header.playerCarIndex;
                 lapNumber = packet.lapData[playerIndex].currentLapNum;
                 currentPosition = packet.lapData[playerIndex].carPosition;
-                
+
                 // Percentage for race completion - treat lap 1 as 0% and last lap as 100%
-                if (lapNumber == 1) { raceCompletion = 0.0; }
-                else { raceCompletion = Math.Round((double)(lapNumber - 1) / (double)(totalLaps - 1) * 100, 2); }
+                if (lapNumber == 1)
+                {
+                    raceCompletion = 0.0;
+                }
+                else
+                {
+                    raceCompletion = Math.Round(
+                        (double)(lapNumber - 1) / (double)(totalLaps - 1) * 100,
+                        2
+                    );
+                }
             }
 
             // Method for when recieving lobby info
@@ -168,23 +210,28 @@ namespace F1RPC
                 }
 
                 // Set presence to "Waiting in the lobby with x other players", -1 because the player itself is not counted
-                discord.SetPresence(new RichPresence
-                {
-                    Details = "In a multiplayer lobby",
-                    State = $"With {lobbyPlayerCount - 1} other {playerText}",
-                    Assets = new Assets
+                discord.SetPresence(
+                    new RichPresence
                     {
-                        LargeImageKey = $"f1_23_logo",
-                        LargeImageText = $"F1 23"
-                    },
-                    Buttons = button
-                });
+                        Details = $"In a multiplayer lobby | Using {playerPlatform}",
+                        State = $"With {lobbyPlayerCount - 1} other {playerText}",
+                        Assets = new Assets
+                        {
+                            LargeImageKey = $"f1_23_logo",
+                            LargeImageText = $"F1 23"
+                        },
+                        Buttons = button
+                    }
+                );
             }
 
             // Method for when recieving final classification data - used for getting final position
             // Final Classification data is only received once once the final scoreboard is shown to the player.
             // Method is async to allow for a Task.Delay at the end of the method as we need to assume the user is in the menus - we don't have a way of knowing if they are or not.
-            async Task Client_OnFinalClassificationDataReceiveAsync(FinalClassificationPacket packet, DiscordRPC discord)
+            async Task Client_OnFinalClassificationDataReceiveAsync(
+                FinalClassificationPacket packet,
+                DiscordRPC discord
+            )
             {
                 finalPosition = packet.classificationData[playerIndex].position;
                 finalGridPosition = packet.classificationData[playerIndex].gridPosition;
@@ -193,19 +240,21 @@ namespace F1RPC
 
                 // To-Do: Add session best lap time to presence
                 // If user finished a session, but it's not a race
-                if (sessionType != "Race" || sessionType != "Race 2" || sessionType != "Race 3") 
+                if (sessionType != "Race" || sessionType != "Race 2" || sessionType != "Race 3")
                 {
-                    discord.SetPresence(new RichPresence
-                    {
-                        Details = $"Session Completed | Track: {track}",
-                        State = $"Racing for {teamName}",
-                        Assets = new Assets
+                    discord.SetPresence(
+                        new RichPresence
                         {
-                            LargeImageKey = $"{currentTrackId}",
-                            LargeImageText = $"{track}"
-                        },
-                        Buttons = button
-                    });
+                            Details = $"Session Completed | Track: {track}",
+                            State = $"Racing for {teamName} | Using {playerPlatform}",
+                            Assets = new Assets
+                            {
+                                LargeImageKey = $"{currentTrackId}",
+                                LargeImageText = $"{track}"
+                            },
+                            Buttons = button
+                        }
+                    );
                 }
 
                 // If user finished the race
@@ -213,96 +262,111 @@ namespace F1RPC
                 {
                     if (sessionType != "Race" || sessionType != "Race 2" || sessionType != "Race 3")
                     {
-                        discord.SetPresence(new RichPresence
-                        {
-                            Details = $"Session Completed | Track: {track}",
-                            State = $"Racing for {teamName}",
-                            Assets = new Assets
+                        discord.SetPresence(
+                            new RichPresence
                             {
-                                LargeImageKey = $"{currentTrackId}",
-                                LargeImageText = $"{track}"
-                            },
-                            Buttons = button
-                        });
+                                Details = $"Session Completed | Track: {track}",
+                                State = $"Racing for {teamName} | Using {playerPlatform}",
+                                Assets = new Assets
+                                {
+                                    LargeImageKey = $"{currentTrackId}",
+                                    LargeImageText = $"{track}"
+                                },
+                                Buttons = button
+                            }
+                        );
                     }
                     else
                     {
-                        discord.SetPresence(new RichPresence
-                        {
-                            Details = $"Finished: P{finalPosition} / P{totalParticipants} | Started: P{finalGridPosition} | Track: {track}",
-                            State = $"Racing for {teamName} | {finalPoints} points earned",
-                            Assets = new Assets
+                        discord.SetPresence(
+                            new RichPresence
                             {
-                                LargeImageKey = $"{currentTrackId}",
-                                LargeImageText = $"{track}"
-                            },
-                            Buttons = button
-                        });
+                                Details =
+                                    $"Finished: P{finalPosition} / P{totalParticipants} | Started: P{finalGridPosition} | Track: {track}",
+                                State =
+                                    $"Racing for {teamName} | {finalPoints} points earned | Using {playerPlatform}",
+                                Assets = new Assets
+                                {
+                                    LargeImageKey = $"{currentTrackId}",
+                                    LargeImageText = $"{track}"
+                                },
+                                Buttons = button
+                            }
+                        );
                     }
                 }
 
                 // If user did not finish the race
                 if (finalResultStatus == 4)
                 {
-                    discord.SetPresence(new RichPresence
-                    {
-                        Details = $"DNF | Started: P{finalGridPosition} | Track: {track}",
-                        State = $"Racing for {teamName}",
-                        Assets = new Assets
+                    discord.SetPresence(
+                        new RichPresence
                         {
-                            LargeImageKey = $"{currentTrackId}",
-                            LargeImageText = $"{track}"
-                        },
-                        Buttons = button
-                    });
+                            Details = $"DNF | Started: P{finalGridPosition} | Track: {track}",
+                            State = $"Racing for {teamName} | Using {playerPlatform}",
+                            Assets = new Assets
+                            {
+                                LargeImageKey = $"{currentTrackId}",
+                                LargeImageText = $"{track}"
+                            },
+                            Buttons = button
+                        }
+                    );
                 }
 
                 // If user was disqualified
                 if (finalResultStatus == 5)
                 {
-                    discord.SetPresence(new RichPresence
-                    {
-                        Details = $"Disqualified | Started: P{finalGridPosition} | Track: {track}",
-                        State = $"Racing for {teamName}",
-                        Assets = new Assets
+                    discord.SetPresence(
+                        new RichPresence
                         {
-                            LargeImageKey = $"{currentTrackId}",
-                            LargeImageText = $"{track}"
-                        },
-                        Buttons = button
-                    });
+                            Details =
+                                $"Disqualified | Started: P{finalGridPosition} | Track: {track}",
+                            State = $"Racing for {teamName} | Using {playerPlatform}",
+                            Assets = new Assets
+                            {
+                                LargeImageKey = $"{currentTrackId}",
+                                LargeImageText = $"{track}"
+                            },
+                            Buttons = button
+                        }
+                    );
                 }
 
                 // If user was not classified
                 if (finalResultStatus == 6)
                 {
-                    discord.SetPresence(new RichPresence
-                    {
-                        Details = $"Not Classified | Track: {track}",
-                        State = $"Racing for {teamName}",
-                        Assets = new Assets
+                    discord.SetPresence(
+                        new RichPresence
                         {
-                            LargeImageKey = $"{currentTrackId}",
-                            LargeImageText = $"{track}"
-                        },
-                        Buttons = button
-                    });
+                            Details = $"Not Classified | Track: {track}",
+                            State = $"Racing for {teamName} | Using {playerPlatform}",
+                            Assets = new Assets
+                            {
+                                LargeImageKey = $"{currentTrackId}",
+                                LargeImageText = $"{track}"
+                            },
+                            Buttons = button
+                        }
+                    );
                 }
-                
+
                 // If user retired
                 if (finalResultStatus == 7)
                 {
-                    discord.SetPresence(new RichPresence
-                    {
-                        Details = $"Retired | Started: P{finalGridPosition} | Track: {track}",
-                        State = $"Racing for {teamName}",
-                        Assets = new Assets
+                    discord.SetPresence(
+                        new RichPresence
                         {
-                            LargeImageKey = $"{currentTrackId}",
-                            LargeImageText = $"{track}"
-                        },
-                        Buttons = button
-                    });
+                            Details = $"Retired | Started: P{finalGridPosition} | Track: {track}",
+                            State = $"Racing for {teamName} | Using {playerPlatform}",
+                            Assets = new Assets
+                            {
+                                LargeImageKey = $"{currentTrackId}",
+                                LargeImageText = $"{track}"
+                            },
+                            Buttons = button
+                        }
+                    );
                 }
 
                 // Wait 15 seconds
@@ -318,6 +382,28 @@ namespace F1RPC
                 playerIndex = packet.header.playerCarIndex;
                 totalParticipants = packet.numActiveCars;
                 teamId = (int)packet.participants[playerIndex].teamId;
+                var playerPlatformInt = (int)packet.participants[playerIndex].platform;
+
+                // If player is on Steam or Origin/EA App
+                if (playerPlatformInt == 1 || playerPlatformInt == 6)
+                {
+                    playerPlatform = "PC";
+                }
+                // If player is on PlayStation
+                else if (playerPlatformInt == 3)
+                {
+                    playerPlatform = "PlayStation";
+                }
+                // If player is on Xbox
+                else if (playerPlatformInt == 4)
+                {
+                    playerPlatform = "Xbox";
+                }
+                // Otherwise, platform unknown
+                else
+                {
+                    playerPlatform = "Unknown";
+                }
 
                 teamName = GetTeamNameFromId(teamId);
             }
@@ -375,10 +461,10 @@ namespace F1RPC
                     new { GameId = 121, Name = "Williams (2022)" },
                     new { GameId = 122, Name = "Aston Martin (2022)" },
                     new { GameId = 123, Name = "Alpine (2022)" },
-                    new { GameId = 124, Name = "AlphaTauri (2022)"},
-                    new { GameId = 125, Name = "Haas (2022)"},
-                    new { GameId = 126, Name = "McLaren (2022)"},
-                    new { GameId = 127, Name = "Alfa Romeo (2022)"},
+                    new { GameId = 124, Name = "AlphaTauri (2022)" },
+                    new { GameId = 125, Name = "Haas (2022)" },
+                    new { GameId = 126, Name = "McLaren (2022)" },
+                    new { GameId = 127, Name = "Alfa Romeo (2022)" },
                     new { GameId = 128, Name = "Konnersport (2022)" },
                     new { GameId = 129, Name = "Konnersport" },
                     new { GameId = 130, Name = "Prema (2022)" },
@@ -392,17 +478,17 @@ namespace F1RPC
                     new { GameId = 138, Name = "Trident (2022)" },
                     new { GameId = 139, Name = "Hitech (2022)" },
                     new { GameId = 140, Name = "Art GP (2022)" },
-                    new { GameId = 143, Name = "ART Grand Prix (2023)"},
-                    new { GameId = 144, Name = "Campos Racing (2023)"},
-                    new { GameId = 145, Name = "Carlin (2023)"},
-                    new { GameId = 146, Name = "PHM Racing (2023)"},
-                    new { GameId = 147, Name = "DAMS (2023)"},
-                    new { GameId = 148, Name = "Hitech (2023)"},
-                    new { GameId = 149, Name = "MP Motorsport (2023)"},
-                    new { GameId = 150, Name = "Prema (2023)"},
-                    new { GameId = 151, Name = "Trident (2023)"},
-                    new { GameId = 152, Name = "Van Amersfoort Racing (2023)"},
-                    new { GameId = 153, Name = "Uni-Virtuosi (2023)"}
+                    new { GameId = 143, Name = "ART Grand Prix (2023)" },
+                    new { GameId = 144, Name = "Campos Racing (2023)" },
+                    new { GameId = 145, Name = "Carlin (2023)" },
+                    new { GameId = 146, Name = "PHM Racing (2023)" },
+                    new { GameId = 147, Name = "DAMS (2023)" },
+                    new { GameId = 148, Name = "Hitech (2023)" },
+                    new { GameId = 149, Name = "MP Motorsport (2023)" },
+                    new { GameId = 150, Name = "Prema (2023)" },
+                    new { GameId = 151, Name = "Trident (2023)" },
+                    new { GameId = 152, Name = "Van Amersfoort Racing (2023)" },
+                    new { GameId = 153, Name = "Uni-Virtuosi (2023)" }
                 };
 
                 var team = teamlist.FirstOrDefault(t => t.GameId == teamId);
@@ -445,7 +531,11 @@ namespace F1RPC
 
             // Method for when receiving session data
             // Session data is received twice a second until the session is destroyed. It only contains data about the ongoing session.
-            void Client_OnSessionDataReceive(SessionPacket packet, DiscordRPC discord, string teamName)
+            void Client_OnSessionDataReceive(
+                SessionPacket packet,
+                DiscordRPC discord,
+                string teamName
+            )
             {
                 formulaType = (int)packet.formula;
                 totalLaps = packet.totalLaps;
@@ -614,61 +704,67 @@ namespace F1RPC
                 // Practice / Qualifying
                 if ((int)packet.sessionType >= 1 && (int)packet.sessionType <= 9)
                 {
-                    discord.SetPresence(new RichPresence
-                    {
-                        Details = $"{sessionType} - {track}",
-                        State = $"Racing for {teamName} | Conditions: {weatherConditions}",
-                        Assets = new Assets
+                    discord.SetPresence(
+                        new RichPresence
                         {
-                            LargeImageKey = $"{currentTrackId}",
-                            LargeImageText = $"{track}"
-                        },
-                        Buttons = button
-                    });
+                            Details = $"{sessionType} - {track}",
+                            State = $"Racing for {teamName} | Conditions: {weatherConditions}",
+                            Assets = new Assets
+                            {
+                                LargeImageKey = $"{currentTrackId}",
+                                LargeImageText = $"{track}"
+                            },
+                            Buttons = button
+                        }
+                    );
                 }
 
                 // Race
                 if ((int)packet.sessionType >= 10 && (int)packet.sessionType <= 12)
                 {
-                    discord.SetPresence(new RichPresence
-                    {
-                        Details = $"{sessionType} - {track} | Lap {lapNumber} / {totalLaps} | {raceCompletion}% complete",
-                        State = $"Racing for {teamName} | P{currentPosition} / P{totalParticipants} | Conditions: {weatherConditions}",
-                        Assets = new Assets
+                    discord.SetPresence(
+                        new RichPresence
                         {
-                            LargeImageKey = $"{currentTrackId}",
-                            LargeImageText = $"{track}"
-                        },
-                        Buttons = button
-                    });
+                            Details =
+                                $"{sessionType} - {track} | Lap {lapNumber} / {totalLaps} | {raceCompletion}% complete",
+                            State =
+                                $"Racing for {teamName} | P{currentPosition} / P{totalParticipants} | Conditions: {weatherConditions}",
+                            Assets = new Assets
+                            {
+                                LargeImageKey = $"{currentTrackId}",
+                                LargeImageText = $"{track}"
+                            },
+                            Buttons = button
+                        }
+                    );
                     Log.Information($"assets/images/{packet.trackId.ToString().ToLower()}.png");
                 }
 
                 // Time Trial
                 if ((int)packet.sessionType == 13)
                 {
-                    discord.SetPresence(new RichPresence
-                    {
-                        Details = $"{sessionType} - {track}",
-                        Assets = new Assets
+                    discord.SetPresence(
+                        new RichPresence
                         {
-                            LargeImageKey = $"{currentTrackId}",
-                            LargeImageText = $"{track}"
-                        },
-                        Buttons = button
-                    });
+                            Details = $"{sessionType} - {track}",
+                            State = $"Using {playerPlatform}",
+                            Assets = new Assets
+                            {
+                                LargeImageKey = $"{currentTrackId}",
+                                LargeImageText = $"{track}"
+                            },
+                            Buttons = button
+                        }
+                    );
                 }
             }
 
             // Method for resetting status - checks if F1 23 is open before executing SetPresence
             void resetStatus(DiscordRPC discord)
             {
-                while (true) { if (isF1Running) { break; } }
-
-                while (isF1Running)
-                {
-                    Log.Information($"Connected. Updating status..");
-                    discord.SetPresence(new RichPresence
+                Log.Information($"Connected. Updating status..");
+                discord.SetPresence(
+                    new RichPresence
                     {
                         Details = "Idle",
                         Assets = new Assets
@@ -678,10 +774,9 @@ namespace F1RPC
                         },
                         Timestamps = new Timestamps(DateTime.UtcNow),
                         Buttons = button
-                    });
-                    Log.Information($"Updated Discord Status: {discord.CurrentPresence.Details}");
-                    break;
-                }
+                    }
+                );
+                Log.Information($"Updated Discord Status: {discord.CurrentPresence.Details}");
             }
             await Task.Delay(-1).ConfigureAwait(false);
         }
