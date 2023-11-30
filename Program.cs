@@ -1,4 +1,6 @@
 ﻿using System.Diagnostics;
+using System.Reflection;
+using System.Runtime.InteropServices;
 using F1RPC.Configuration;
 using F1Sharp;
 using F1Sharp.Packets;
@@ -28,32 +30,54 @@ namespace F1RPC
                 .CreateLogger();
 
             Log.Information("F1RPC | Version 1.0.0.1");
-            Log.Information("Waiting for F1 to be detected..");
+            Log.Information("Program booting..");
 
-            // Check if F1 23 is running, if not, wait until it is - when it is, initialize the program and break loop.
-            while (true)
+            try {
+                f1.Initialize().GetAwaiter().GetResult();
+            }
+            catch (Exception ex)
             {
-                // To-Do: Replace with a check so it can also work with consoles.
-                f1.isF1Running = Process.GetProcessesByName("F1_23").Length > 0;
-                if (f1.isF1Running)
-                {
-                    Log.Information("F1 detected. Initializing..");
-                    f1.Initialize().GetAwaiter().GetResult();
-                    break;
+                if (ex.Message == "Address already in use") {
+                    Log.Fatal($"Port {Config.Port} is already in use. Please either close the program using it and try again or choose another port in the Configuration.json file.");
+                }
+                else {
+                    Log.Fatal($"Exception occured: {ex.Message}");
                 }
             }
         }
 
         public async Task Initialize()
         {
-            string json = await File.ReadAllTextAsync("assets/config/Configuration.json").ConfigureAwait(false);
-            using (var fs = File.OpenRead("assets/config/Configuration.json")) Config = JsonConvert.DeserializeObject<ConfigJson>(json);
+            var configJson = new ConfigJson();
+            int port = 0;
+            string json = "";
 
-            var configJson = JsonConvert.DeserializeObject<ConfigJson>(json);
-            var port = configJson.Port;
+            // Check to see if it's running on MacOS as the path is handled differently.
+            // For some reason, when running a MacOS program, the working directory is the root of the drive.
+            // Not the program directory.
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            {
+                var projectDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+
+                json = await File.ReadAllTextAsync($"{projectDirectory}/assets/config/Configuration.json").ConfigureAwait(false);
+                var configPath = String.Format($"{projectDirectory}/assets/config/Configuration.json");
+
+                using (var fs = File.OpenRead(configPath))
+                {
+                    Config = JsonConvert.DeserializeObject<ConfigJson>(json);
+                }
+            }
+            // If running Windows, use the previous code.
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+                json = await File.ReadAllTextAsync("assets/config/Configuration.json").ConfigureAwait(false);
+                using (var fs = File.OpenRead("assets/config/Configuration.json")) Config = JsonConvert.DeserializeObject<ConfigJson>(json);
+            }
+
+            configJson = JsonConvert.DeserializeObject<ConfigJson>(json);
+            port = configJson.Port;
 
             Log.Information("Logger initialized.");
-            Log.Information("If you have any problems, please raise a issue on GitHub and upload your log file in the logs folder.");
+            Log.Information("If you have any problems, please raise a issue on GitHub and upload your log file found in the logs folder.");
 
             if (configJson.AppId == "YOUR_APP_ID_HERE")
             {
@@ -73,6 +97,7 @@ namespace F1RPC
             TelemetryClient client = new TelemetryClient(port);
 
             Log.Information($"Client initialized. Listening on port {port}.");
+            Log.Information("Waiting for data..");
 
             // Various variables to use
             int teamId = 0;
@@ -638,8 +663,6 @@ namespace F1RPC
             // Method for resetting status - checks if F1 23 is open before executing SetPresence
             void resetStatus(DiscordRPC discord)
             {
-                Log.Information("F1 23 detected. Connecting..");
-
                 while (true) { if (isF1Running) { break; } }
 
                 while (isF1Running)
