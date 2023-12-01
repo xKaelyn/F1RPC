@@ -100,7 +100,7 @@ namespace F1RPC
                         $"{projectDirectory}/assets/config/Configuration.json"
                     )
                     .ConfigureAwait(false);
-                var configPath = String.Format(
+                var configPath = string.Format(
                     $"{projectDirectory}/assets/config/Configuration.json"
                 );
 
