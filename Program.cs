@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using System.Drawing;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using CSharpDiscordWebhook.NET;
@@ -194,7 +195,7 @@ namespace F1RPC
             int numPitStops = 0;
             int speedTrapFastestDriverIdx = 0;
             float speedTrapFastestSpeedKmh = 0.0f;
-            float speedTrapFastestSpeedMph = 0.0f;
+            List<dynamic> penaltiesList = new List<dynamic>();
             float fastestLapTime = 0.0f;
             int fastestLapDriverIdx = 0;
             ParticipantData fastestLapDriver = new ParticipantData();
@@ -229,6 +230,14 @@ namespace F1RPC
                 fastestLapDriverIdx = packet.eventDetails.fastestLap.vehicleIdx;
                 speedTrapFastestDriverIdx = packet.eventDetails.sppedTrap.vehicleIdx;
                 speedTrapFastestSpeedKmh = packet.eventDetails.sppedTrap.speed;
+
+                // If new event is a penalty, add it to the penalty list
+                // WIP: Add penalty type to list to display via embed
+                if (new string(packet.eventStringCode) == "PENA")
+                {
+                    penaltiesList.Add(packet.eventDetails.penalty);
+                    penalties = penaltiesList.Count;
+                }
             }
 
             // Method for when receiving lap data - used for getting lap number
@@ -337,45 +346,6 @@ namespace F1RPC
                                 Buttons = button
                             }
                         );
-                        Log.Information($"Session Type: {sessionType}");
-                        DiscordMessage message = new DiscordMessage();
-                        DiscordEmbed embed = new DiscordEmbed
-                        {
-                            Title = "F1 23 | Session Completed",
-                            Url = new Uri("https://github.com/xkaelyn/f1rpc"),
-                            // Color to be determined by race position
-                            Fields = new List<EmbedField>()
-                            {
-                                new EmbedField()
-                                {
-                                    Name = "Date & Time",
-                                    Value = $"{DateTime.Now}",
-                                },
-                                new EmbedField() { Name = "Driver", Value = playerName },
-                                new EmbedField() { Name = "Track", Value = track },
-                                new EmbedField() { Name = "Team", Value = teamName },
-                                new EmbedField()
-                                {
-                                    Name = "Virtual Safety Cars",
-                                    Value = $"{virtualSafetyCars}",
-                                    Inline = true
-                                },
-                                new EmbedField()
-                                {
-                                    Name = "Safety Cars",
-                                    Value = $"{safetyCars}",
-                                    Inline = true
-                                },
-                                new EmbedField()
-                                {
-                                    Name = "Red Flags",
-                                    Value = $"{redFlags}",
-                                    Inline = true
-                                }
-                            }
-                        };
-                        message.Embeds.Add(embed);
-                        await webhook.SendAsync(message);
                     }
                     else
                     {
@@ -399,9 +369,14 @@ namespace F1RPC
                             DiscordMessage message = new DiscordMessage();
                             DiscordEmbed embed = new DiscordEmbed
                             {
-                                Title = "F1 23 | Race Finished",
+                                Author = new EmbedAuthor()
+                                {
+                                    Name = "F1RPC",
+                                    Url = new Uri("https://github.com/xkaelyn/f1rpc"),
+                                },
+                                Title = "Race Finished",
                                 Url = new Uri("https://github.com/xkaelyn/f1rpc"),
-                                // Color to be determined by race position
+                                Color = GetEmbedColorByPosition(finalPosition),
                                 Fields = new List<EmbedField>()
                                 {
                                     new EmbedField()
@@ -481,9 +456,10 @@ namespace F1RPC
                                     },
                                     new EmbedField()
                                     {
-                                        Name = "Top Speed Achieved",
+                                        Name = "Top Speed Achieved In Session",
                                         Value =
-                                            $"{speedTrapFastestSpeedKmh} km/h / ({ConvertKmhToMph(speedTrapFastestSpeedKmh)} mp/h)",
+                                            $"{speedTrapFastestSpeedKmh} km/h / ({ConvertKmhToMph(speedTrapFastestSpeedKmh)} mp/h) by {fastestLapDriver.name}.",
+                                        Inline = true
                                     }
                                 },
                                 Footer = new EmbedFooter()
@@ -585,27 +561,26 @@ namespace F1RPC
                 teamId = (int)packet.participants[playerIndex].teamId;
                 playerName = new string(packet.participants[playerIndex].name);
                 fastestLapDriver = packet.participants[fastestLapDriverIdx];
+
                 var playerPlatformInt = (int)packet.participants[playerIndex].platform;
 
-                // If player is on Steam or Origin/EA App
-                if (playerPlatformInt == 1 || playerPlatformInt == 6)
+                switch (playerPlatformInt)
                 {
-                    playerPlatform = "PC";
-                }
-                // If player is on PlayStation
-                else if (playerPlatformInt == 3)
-                {
-                    playerPlatform = "PlayStation";
-                }
-                // If player is on Xbox
-                else if (playerPlatformInt == 4)
-                {
-                    playerPlatform = "Xbox";
-                }
-                // Otherwise, platform unknown
-                else
-                {
-                    playerPlatform = "Unknown";
+                    case 1:
+                        playerPlatform = "PC (Steam)";
+                        break;
+                    case 6:
+                        playerPlatform = "PC (Origin/EA)";
+                        break;
+                    case 3:
+                        playerPlatform = "PlayStation";
+                        break;
+                    case 4:
+                        playerPlatform = "Xbox";
+                        break;
+                    default:
+                        playerPlatform = "Unknown";
+                        break;
                 }
 
                 teamName = GetTeamNameFromId(teamId);
@@ -985,6 +960,35 @@ namespace F1RPC
                 Log.Information($"Updated Discord Status: {discord.CurrentPresence.Details}");
             }
             await Task.Delay(-1).ConfigureAwait(false);
+        }
+
+        private DiscordColor GetEmbedColorByPosition(int finalPosition)
+        {
+            if (finalPosition == 1)
+            {
+                var color = new DiscordColor(Color.Gold);
+                return color;
+            }
+            if (finalPosition == 2)
+            {
+                var color = new DiscordColor(Color.Silver);
+                return color;
+            }
+            if (finalPosition == 3)
+            {
+                var color = new DiscordColor(Color.SaddleBrown);
+                return color;
+            }
+            if (finalPosition >= 4 && finalPosition <= 10)
+            {
+                var color = new DiscordColor(Color.Cyan);
+                return color;
+            }
+            else
+            {
+                var color = new DiscordColor(Color.White);
+                return color;
+            }
         }
 
         double ConvertKmhToMph(double kmh)
