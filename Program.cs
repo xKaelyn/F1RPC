@@ -373,6 +373,12 @@ namespace F1RPC
                                     Url = new Uri("https://github.com/xkaelyn/f1rpc"),
                                 },
                                 Title = "Race Finished",
+                                Thumbnail = new EmbedMedia
+                                {
+                                    Url = new Uri(
+                                        $"{projectDirectory}/assets/images/{currentTrackId}.png"
+                                    )
+                                },
                                 Url = new Uri("https://github.com/xkaelyn/f1rpc"),
                                 Color = GetEmbedColorByPosition(finalPosition),
                                 Fields = new List<EmbedField>()
