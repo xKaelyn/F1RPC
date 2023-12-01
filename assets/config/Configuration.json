@@ -1,4 +1,5 @@
 {
   "appid": "YOUR_APP_ID_HERE",
-  "port":  20777
+  "port":  20777,
+  "webhook_url": "YOUR_WEBHOOK_URL_HERE"
 }
