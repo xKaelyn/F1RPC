@@ -172,6 +172,9 @@ namespace F1RPC
             int totalLaps = 0;
             int formulaType = 0;
             string sessionType = "";
+            int penalties = 0;
+            int totalWarnings = 0;
+            int cornerCuttingWarnings = 0;
             int safetyCars = 0;
             int virtualSafetyCars = 0;
             int redFlags = 0;
@@ -182,7 +185,7 @@ namespace F1RPC
             double raceCompletion = 0.0;
             int lobbyPlayerCount = 0;
             int finalPosition = 0;
-            int finalGridPosition = 0;
+            int gridPosition = 0;
             int finalPoints = 0;
             int finalResultStatus = 0;
             int weatherId = 0;
@@ -216,6 +219,7 @@ namespace F1RPC
                 playerIndex = packet.header.playerCarIndex;
                 lapNumber = packet.lapData[playerIndex].currentLapNum;
                 currentPosition = packet.lapData[playerIndex].carPosition;
+                totalWarnings = packet.lapData[playerIndex].totalWarnings;
 
                 // Percentage for race completion - treat lap 1 as 0% and last lap as 100%
                 if (lapNumber == 1)
@@ -273,7 +277,7 @@ namespace F1RPC
             )
             {
                 finalPosition = packet.classificationData[playerIndex].position;
-                finalGridPosition = packet.classificationData[playerIndex].gridPosition;
+                gridPosition = packet.classificationData[playerIndex].gridPosition;
                 finalPoints = packet.classificationData[playerIndex].points;
                 finalResultStatus = (int)packet.classificationData[playerIndex].resultStatus;
 
@@ -360,7 +364,7 @@ namespace F1RPC
                             new RichPresence
                             {
                                 Details =
-                                    $"Finished: P{finalPosition} / P{totalParticipants} | Started: P{finalGridPosition} | Track: {track}",
+                                    $"Finished: P{finalPosition} / P{totalParticipants} | Started: P{gridPosition} | Track: {track}",
                                 State =
                                     $"Racing for {teamName} | {finalPoints} points earned | Using {playerPlatform}",
                                 Assets = new Assets
@@ -406,6 +410,43 @@ namespace F1RPC
                                         Name = "Red Flags",
                                         Value = $"{redFlags}",
                                         Inline = true
+                                    },
+                                    new EmbedField()
+                                    {
+                                        Name = "Penalties",
+                                        Value = $"{penalties}",
+                                        Inline = true
+                                    },
+                                    new EmbedField()
+                                    {
+                                        Name = "Warnings",
+                                        Value = $"{totalWarnings}",
+                                        Inline = true
+                                    },
+                                    new EmbedField()
+                                    {
+                                        Name = "Corner Cut Warnings",
+                                        Value = $"{cornerCuttingWarnings}",
+                                        Inline = true
+                                    },
+                                    new EmbedField()
+                                    {
+                                        Name = "Starting Position",
+                                        Value = $"P{gridPosition}",
+                                        Inline = true
+                                    },
+                                    new EmbedField()
+                                    {
+                                        Name = "Final Position",
+                                        Value = $"P{finalPosition}",
+                                        Inline = true
+                                    },
+                                    new EmbedField()
+                                    {
+                                        Name = "Position Change",
+                                        Value =
+                                            $"{(gridPosition < finalPosition ? "-" : "+ ")}{Math.Abs(gridPosition - finalPosition)}",
+                                        Inline = true
                                     }
                                 }
                             };
@@ -421,7 +462,7 @@ namespace F1RPC
                     discord.SetPresence(
                         new RichPresence
                         {
-                            Details = $"DNF | Started: P{finalGridPosition} | Track: {track}",
+                            Details = $"DNF | Started: P{gridPosition} | Track: {track}",
                             State = $"Racing for {teamName} | Using {playerPlatform}",
                             Assets = new Assets
                             {
@@ -439,8 +480,7 @@ namespace F1RPC
                     discord.SetPresence(
                         new RichPresence
                         {
-                            Details =
-                                $"Disqualified | Started: P{finalGridPosition} | Track: {track}",
+                            Details = $"Disqualified | Started: P{gridPosition} | Track: {track}",
                             State = $"Racing for {teamName} | Using {playerPlatform}",
                             Assets = new Assets
                             {
@@ -476,7 +516,7 @@ namespace F1RPC
                     discord.SetPresence(
                         new RichPresence
                         {
-                            Details = $"Retired | Started: P{finalGridPosition} | Track: {track}",
+                            Details = $"Retired | Started: P{gridPosition} | Track: {track}",
                             State = $"Racing for {teamName} | Using {playerPlatform}",
                             Assets = new Assets
                             {
