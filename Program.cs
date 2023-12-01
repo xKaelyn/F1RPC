@@ -1,6 +1,8 @@
 ﻿using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using CSharpDiscordWebhook.NET;
+using CSharpDiscordWebhook.NET.Discord;
 using F1RPC.Configuration;
 using F1Sharp;
 using F1Sharp.Packets;
@@ -16,6 +18,7 @@ namespace F1RPC
     public class F1RPC
     {
         public DiscordRPC? discord { get; private set; }
+        public DiscordWebhook? webhook { get; private set; } = new DiscordWebhook();
         public static ConfigJson Config { get; private set; } = new ConfigJson();
 
         static void Main(string[] args)
@@ -66,6 +69,8 @@ namespace F1RPC
             var configJson = new ConfigJson();
             int port = 0;
             string json = "";
+            string url = "";
+            bool webhookEnabled = false;
 
             // Check to see if it's running on MacOS as the path is handled differently.
             // For some reason, when running a MacOS program, the working directory is the root of the drive.
@@ -110,6 +115,22 @@ namespace F1RPC
             {
                 Log.Error("Please set your Discord App ID in assets/config/Configuration.json");
                 return;
+            }
+
+            if (configJson.WebhookUrl == "YOUR_WEBHOOK_URL_HERE")
+            {
+                Log.Warning(
+                    "If you wish to use the Discord Webhook feature, make sure to set your webhook URL in assets/config/Configuration.json."
+                );
+                webhookEnabled = false;
+            }
+            else
+            {
+                Log.Information(
+                    "Discord Webhook feature enabled - final race classification data will be sent to the webhook."
+                );
+                webhook.Uri = new Uri(configJson.WebhookUrl);
+                webhookEnabled = true;
             }
 
             discord = new DiscordRPC(configJson.AppId);
