@@ -2,7 +2,6 @@
 using System.Drawing;
 using System.Reflection;
 using System.Runtime.InteropServices;
-using CSharpDiscordWebhook.NET;
 using CSharpDiscordWebhook.NET.Discord;
 using F1RPC.Configuration;
 using F1Sharp;
