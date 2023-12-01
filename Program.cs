@@ -922,7 +922,6 @@ namespace F1RPC
                             Buttons = button
                         }
                     );
-                    Log.Information($"assets/images/{packet.trackId.ToString().ToLower()}.png");
                 }
 
                 // Time Trial
