@@ -8,10 +8,10 @@
     <Nullable>enable</Nullable>
     <ApplicationIcon>zXlCFdHU_400x400.ico</ApplicationIcon>
     <SignAssembly>False</SignAssembly>
-    <Authors></Authors>
+    <Authors>xKaelyn</Authors>
     <Company>$(Authors)</Company>
-    <AssemblyVersion>1.0.0.1</AssemblyVersion>
-    <FileVersion>1.0.0.1</FileVersion>
+    <AssemblyVersion>1.0.0.3</AssemblyVersion>
+    <FileVersion>1.0.0.3</FileVersion>
   </PropertyGroup>
 
   <ItemGroup>
