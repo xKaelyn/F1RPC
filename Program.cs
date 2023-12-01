@@ -19,7 +19,7 @@ namespace F1RPC
     public class F1RPC
     {
         public DiscordRPC? discord { get; private set; }
-        public DiscordWebhook webhook { get; private set; } = new DiscordWebhook();
+        public DiscordWebhook? webhook { get; private set; } = new DiscordWebhook();
         public static ConfigJson Config { get; private set; } = new ConfigJson();
         public string? projectDirectory { get; set; }
         public bool? isRunningOnMacOS { get; set; }
@@ -158,7 +158,7 @@ namespace F1RPC
 
             Log.Information("Program initialized. Setting up client..");
 
-            TelemetryClient client = new TelemetryClient(port);
+            TelemetryClient client = new(port);
 
             Log.Information($"Client initialized. Listening on port {port}.");
             Log.Information("Waiting for data..");
@@ -194,17 +194,14 @@ namespace F1RPC
             int numPitStops = 0;
             int speedTrapFastestDriverIdx = 0;
             float speedTrapFastestSpeedKmh = 0.0f;
-            List<dynamic> penaltiesList = new List<dynamic>();
+            List<dynamic> penaltiesList = new();
             float fastestLapTime = 0.0f;
             int fastestLapDriverIdx = 0;
-            ParticipantData fastestLapDriver = new ParticipantData();
+            string fastestLapDriver = "";
             var button = new NetDiscordRpc.RPC.Button[]
             {
-                new NetDiscordRpc.RPC.Button
-                {
-                    Label = "Powered by F1RPC",
-                    Url = "https://github.com/xKaelyn/F1RPC"
-                }
+                // To-Do: Add custom color to button
+                new() { Label = "Powered by F1RPC", Url = "https://github.com/xKaelyn/F1RPC" }
             };
 
             // When first booting system, reset the status by showing a "in menu" presence
@@ -233,7 +230,189 @@ namespace F1RPC
                 // WIP: Add penalty type to list to display via embed
                 if (new string(packet.eventStringCode) == "PENA")
                 {
-                    penaltiesList.Add(packet.eventDetails.penalty);
+                    string infringementType;
+                    // Case switch for infringement types
+                    switch (packet.eventDetails.penalty.infringementType)
+                    {
+                        case 0:
+                            infringementType = "Blocking by slow driving";
+                            break;
+                        case 1:
+                            infringementType = "Blocking by wrong way driving";
+                            break;
+                        case 2:
+                            infringementType = "Reversing off the start line";
+                            break;
+                        case 3:
+                            infringementType = "Big Collision";
+                            break;
+                        case 4:
+                            infringementType = "Small Collision";
+                            break;
+                        case 5:
+                            infringementType = "Collision, failed to hand back a single position";
+                            break;
+                        case 6:
+                            infringementType = "Collision, failed to hand back multiple positions";
+                            break;
+                        case 7:
+                            infringementType = "Corner cutting, gained time";
+                            break;
+                        case 8:
+                            infringementType = "Corner cutting, no time gained";
+                            break;
+                        case 9:
+                            infringementType = "Corner cutting, invalidated lap";
+                            break;
+                        case 10:
+                            infringementType = "Crossed pit exit line";
+                            break;
+                        case 11:
+                            infringementType = "Ignoring blue flags";
+                            break;
+                        case 12:
+                            infringementType = "Ignoring yellow flags";
+                            break;
+                        case 13:
+                            infringementType = "Ignoring drive through";
+                            break;
+                        case 14:
+                            infringementType = "Too many drive throughs";
+                            break;
+                        case 15:
+                            infringementType = "Drive through reminder serve within n laps";
+                            break;
+                        case 16:
+                            infringementType = "Drive through reminder serve this lap";
+                            break;
+                        case 17:
+                            infringementType = "Speeding in the pit lane";
+                            break;
+                        case 18:
+                            infringementType = "Parked for too long";
+                            break;
+                        case 19:
+                            infringementType = "Ignoring tyre regulations";
+                            break;
+                        case 20:
+                            infringementType = "Too many penalties";
+                            break;
+                        case 21:
+                            infringementType = "Multiple warnings";
+                            break;
+                        case 22:
+                            infringementType = "Approaching disqualification";
+                            break;
+                        case 23:
+                            infringementType = "Tyre regulations select single";
+                            break;
+                        case 24:
+                            infringementType = "Tyre regulations select multiple";
+                            break;
+                        case 25:
+                            infringementType = "Lap invalidated corner cutting";
+                            break;
+                        case 26:
+                            infringementType = "Lap invalidated running wide";
+                            break;
+                        case 27:
+                            infringementType = "Corner cutting, gained time (minor)";
+                            break;
+                        case 28:
+                            infringementType = "Corner cutting, gained time (significant)";
+                            break;
+                        case 29:
+                            infringementType = "Corner cutting, gained time (extreme)";
+                            break;
+                        case 30:
+                            infringementType = "Lap invalidated wall riding";
+                            break;
+                        case 31:
+                            infringementType = "Lap invalidated flashback used";
+                            break;
+                        case 32:
+                            infringementType = "Lap invalidated reset to track";
+                            break;
+                        case 33:
+                            infringementType = "Blocking the pitlane";
+                            break;
+                        case 34:
+                            infringementType = "Jump start";
+                            break;
+                        case 35:
+                            infringementType =
+                                "Collision with a vehicle on track under SC conditions";
+                            break;
+                        case 36:
+                            infringementType = "Illegal overtake under SC conditions";
+                            break;
+                        case 37:
+                            infringementType = "Exceeding delta time during SC";
+                            break;
+                        case 38:
+                            infringementType = "Exceeding delta time during VSC";
+                            break;
+                        case 39:
+                            infringementType = "Below minimum speed in formation lap";
+                            break;
+                        case 40:
+                            infringementType = "Invalid Parking in Formation Lap";
+                            break;
+                        case 41:
+                            infringementType = "Retired due to Mechanical Failure";
+                            break;
+                        case 42:
+                            infringementType = "Retired due to car being terminally damaged";
+                            break;
+                        case 43:
+                            infringementType = "Exceeded 10 car lengths under SC conditions";
+                            break;
+                        case 44:
+                            infringementType = "Black Flag";
+                            break;
+                        case 45:
+                            infringementType = "Unserved Stop Go Penalty";
+                            break;
+                        case 46:
+                            infringementType = "Unserved Drive Through Penalty";
+                            break;
+                        case 47:
+                            infringementType = "Power Unit component change";
+                            break;
+                        case 48:
+                            infringementType = "Gearbox change";
+                            break;
+                        case 49:
+                            infringementType = "Component change within Parc Ferme";
+                            break;
+                        case 50:
+                            infringementType = "Grid penalty within League";
+                            break;
+                        case 51:
+                            infringementType = "Retry Penalty";
+                            break;
+                        case 52:
+                            infringementType = "Illegal time gain";
+                            break;
+                        case 53:
+                            infringementType = "Mandatory pitstop";
+                            break;
+                        case 54:
+                            infringementType = "Attribute assigned";
+                            break;
+                        default:
+                            infringementType = "Unknown";
+                            break;
+                    }
+
+                    var penaltyToAdd = new
+                    {
+                        VehicleIdx = packet.eventDetails.penalty.vehicleIdx,
+                        DriverName = GetDriverNameFromIdx(packet.eventDetails.penalty.vehicleIdx),
+                        Reason = infringementType
+                    };
+
+                    penaltiesList.Add(penaltyToAdd);
                     penalties = penaltiesList.Count;
                 }
             }
@@ -364,116 +543,127 @@ namespace F1RPC
                         );
                         if (webhookEnabled == true)
                         {
-                            DiscordMessage message = new DiscordMessage();
-                            DiscordEmbed embed = new DiscordEmbed
-                            {
-                                Author = new EmbedAuthor
+                            DiscordMessage message = new();
+                            DiscordEmbed embed =
+                                new()
                                 {
-                                    Name = "F1RPC",
+                                    Author = new EmbedAuthor
+                                    {
+                                        Name = "F1RPC",
+                                        Url = new Uri("https://github.com/xkaelyn/f1rpc"),
+                                    },
+                                    Title = "Race Finished",
+                                    Thumbnail = new EmbedMedia
+                                    {
+                                        Url = new Uri(
+                                            $"https://raw.githubusercontent.com/xKaelyn/F1RPC/master/assets/images/{currentTrackId}.png"
+                                        )
+                                    },
                                     Url = new Uri("https://github.com/xkaelyn/f1rpc"),
-                                },
-                                Title = "Race Finished",
-                                Thumbnail = new EmbedMedia
-                                {
-                                    Url = new Uri(
-                                        $"{projectDirectory}/assets/images/{currentTrackId}.png"
-                                    )
-                                },
-                                Url = new Uri("https://github.com/xkaelyn/f1rpc"),
-                                Color = GetEmbedColorByPosition(finalPosition),
-                                Fields = new List<EmbedField>()
-                                {
-                                    new EmbedField()
+                                    Color = GetEmbedColorByPosition(finalPosition),
+                                    Fields = new List<EmbedField>()
                                     {
-                                        Name = "Date & Time",
-                                        Value = $"{DateTime.Now}",
+                                        new() { Name = "Date & Time", Value = $"{DateTime.Now}", },
+                                        new() { Name = "Driver", Value = playerName },
+                                        new() { Name = "Track", Value = track },
+                                        new() { Name = "Team", Value = teamName },
+                                        new()
+                                        {
+                                            Name = "Virtual Safety Cars",
+                                            Value = $"{virtualSafetyCars}",
+                                            Inline = true
+                                        },
+                                        new()
+                                        {
+                                            Name = "Safety Cars",
+                                            Value = $"{safetyCars}",
+                                            Inline = true
+                                        },
+                                        new()
+                                        {
+                                            Name = "Red Flags",
+                                            Value = $"{redFlags}",
+                                            Inline = true
+                                        },
+                                        new()
+                                        {
+                                            Name = "Penalties",
+                                            Value = $"{penalties}",
+                                            Inline = true
+                                        },
+                                        new()
+                                        {
+                                            Name = "Warnings",
+                                            Value = $"{totalWarnings}",
+                                            Inline = true
+                                        },
+                                        new()
+                                        {
+                                            Name = "Corner Cut Warnings",
+                                            Value = $"{cornerCuttingWarnings}",
+                                            Inline = true
+                                        },
+                                        new()
+                                        {
+                                            Name = "Starting Position",
+                                            Value = $"P{gridPosition}",
+                                            Inline = true
+                                        },
+                                        new()
+                                        {
+                                            Name = "Final Position",
+                                            Value = $"P{finalPosition}",
+                                            Inline = true
+                                        },
+                                        new()
+                                        {
+                                            Name = "Position Change",
+                                            Value =
+                                                $"{(gridPosition < finalPosition ? "-" : "+ ")}{Math.Abs(gridPosition - finalPosition)}",
+                                            Inline = true
+                                        },
+                                        new()
+                                        {
+                                            Name = "Number of Pit Stops",
+                                            Value = $"{numPitStops}",
+                                            Inline = true
+                                        },
+                                        new()
+                                        {
+                                            Name = "Championship Points Earned",
+                                            Value = $"{finalPoints}",
+                                            Inline = true
+                                        },
+                                        new()
+                                        {
+                                            Name = "Top Speed Achieved In Session",
+                                            Value =
+                                                $"{speedTrapFastestSpeedKmh} km/h / ({ConvertKmhToMph(speedTrapFastestSpeedKmh)} mp/h) by {fastestLapDriver}.",
+                                            Inline = true
+                                        }
                                     },
-                                    new EmbedField { Name = "Driver", Value = playerName },
-                                    new EmbedField { Name = "Track", Value = track },
-                                    new EmbedField { Name = "Team", Value = teamName },
-                                    new EmbedField
+                                    Footer = new EmbedFooter
                                     {
-                                        Name = "Virtual Safety Cars",
-                                        Value = $"{virtualSafetyCars}",
-                                        Inline = true
-                                    },
-                                    new EmbedField
-                                    {
-                                        Name = "Safety Cars",
-                                        Value = $"{safetyCars}",
-                                        Inline = true
-                                    },
-                                    new EmbedField
-                                    {
-                                        Name = "Red Flags",
-                                        Value = $"{redFlags}",
-                                        Inline = true
-                                    },
-                                    new EmbedField
-                                    {
-                                        Name = "Penalties",
-                                        Value = $"{penalties}",
-                                        Inline = true
-                                    },
-                                    new EmbedField
-                                    {
-                                        Name = "Warnings",
-                                        Value = $"{totalWarnings}",
-                                        Inline = true
-                                    },
-                                    new EmbedField
-                                    {
-                                        Name = "Corner Cut Warnings",
-                                        Value = $"{cornerCuttingWarnings}",
-                                        Inline = true
-                                    },
-                                    new EmbedField
-                                    {
-                                        Name = "Starting Position",
-                                        Value = $"P{gridPosition}",
-                                        Inline = true
-                                    },
-                                    new EmbedField
-                                    {
-                                        Name = "Final Position",
-                                        Value = $"P{finalPosition}",
-                                        Inline = true
-                                    },
-                                    new EmbedField
-                                    {
-                                        Name = "Position Change",
-                                        Value =
-                                            $"{(gridPosition < finalPosition ? "-" : "+ ")}{Math.Abs(gridPosition - finalPosition)}",
-                                        Inline = true
-                                    },
-                                    new EmbedField
-                                    {
-                                        Name = "Number of Pit Stops",
-                                        Value = $"{numPitStops}",
-                                        Inline = true
-                                    },
-                                    new EmbedField
-                                    {
-                                        Name = "Championship Points Earned",
-                                        Value = $"{finalPoints}",
-                                        Inline = true
-                                    },
-                                    new EmbedField
-                                    {
-                                        Name = "Top Speed Achieved In Session",
-                                        Value =
-                                            $"{speedTrapFastestSpeedKmh} km/h / ({ConvertKmhToMph(speedTrapFastestSpeedKmh)} mp/h) by {fastestLapDriver.name}.",
-                                        Inline = true
+                                        Text =
+                                            $"xKaelyn/F1RPC ~ Version {Assembly.GetExecutingAssembly().GetName().Version}"
                                     }
-                                },
-                                Footer = new EmbedFooter
-                                {
-                                    Text =
-                                        $"xKaelyn/F1RPC ~ Version {Assembly.GetExecutingAssembly().GetName().Version}"
-                                }
-                            };
+                                };
                             message.Embeds.Add(embed);
-                            await webhook.SendAsync(message);
+                            try
+                            {
+                                if (webhook != null)
+                                {
+                                    await webhook.SendAsync(message);
+                                }
+                                else
+                                {
+                                    Log.Fatal("Webhook is null.");
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                Log.Fatal($"Error sending webhook: {ex}");
+                            }
                         }
                     }
                 }
@@ -563,8 +753,24 @@ namespace F1RPC
                 playerIndex = packet.header.playerCarIndex;
                 totalParticipants = packet.numActiveCars;
                 teamId = (int)packet.participants[playerIndex].teamId;
-                playerName = new string(packet.participants[playerIndex].name);
-                fastestLapDriver = packet.participants[fastestLapDriverIdx];
+
+                if (playerIndex >= 0 && playerIndex < packet.participants.Length)
+                {
+                    playerName = new string(packet.participants[playerIndex].name);
+                }
+                else
+                {
+                    playerName = "Unknown";
+                }
+
+                if (fastestLapDriverIdx >= 0 && fastestLapDriverIdx < packet.participants.Length)
+                {
+                    fastestLapDriver = new string(packet.participants[fastestLapDriverIdx].name);
+                }
+                else
+                {
+                    fastestLapDriver = "Unknown";
+                }
 
                 var playerPlatformInt = (int)packet.participants[playerIndex].platform;
 
