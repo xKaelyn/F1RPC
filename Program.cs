@@ -264,7 +264,7 @@ namespace F1RPC
 
                 // To-Do: Add session best lap time to presence
                 // If user finished a session, but it's not a race
-                if (sessionType != "Race" || sessionType != "Race 2" || sessionType != "Race 3")
+                if (sessionType != "Race" && sessionType != "Race 2" && sessionType != "Race 3")
                 {
                     discord.SetPresence(
                         new RichPresence
@@ -284,7 +284,7 @@ namespace F1RPC
                 // If user finished the race
                 if (finalResultStatus == 3)
                 {
-                    if (sessionType != "Race" || sessionType != "Race 2" || sessionType != "Race 3")
+                    if (sessionType != "Race" && sessionType != "Race 2" && sessionType != "Race 3")
                     {
                         discord.SetPresence(
                             new RichPresence
@@ -299,6 +299,45 @@ namespace F1RPC
                                 Buttons = button
                             }
                         );
+                        Log.Information($"Session Type: {sessionType}");
+                        DiscordMessage message = new DiscordMessage();
+                        DiscordEmbed embed = new DiscordEmbed
+                        {
+                            Title = "F1 23 | Session Completed",
+                            Url = new Uri("https://github.com/xkaelyn/f1rpc"),
+                            // Color to be determined by race position
+                            Fields = new List<EmbedField>()
+                                {
+                                    new EmbedField()
+                                    {
+                                        Name = "Date & Time",
+                                        Value = $"{DateTime.Now}",
+                                    },
+                                    new EmbedField() { Name = "Driver", Value = playerName },
+                                    new EmbedField() { Name = "Track", Value = track },
+                                    new EmbedField() { Name = "Team", Value = teamName },
+                                    new EmbedField()
+                                    {
+                                        Name = "Virtual Safety Cars",
+                                        Value = $"{virtualSafetyCars}",
+                                        Inline = true
+                                    },
+                                    new EmbedField()
+                                    {
+                                        Name = "Safety Cars",
+                                        Value = $"{safetyCars}",
+                                        Inline = true
+                                    },
+                                    new EmbedField()
+                                    {
+                                        Name = "Red Flags",
+                                        Value = $"{redFlags}",
+                                        Inline = true
+                                    }
+                                }
+                        };
+                        message.Embeds.Add(embed);
+                        await webhook.SendAsync(message);
                     }
                     else
                     {
@@ -355,6 +394,8 @@ namespace F1RPC
                                     }
                                 }
                             };
+                            message.Embeds.Add(embed);
+                            await webhook.SendAsync(message);
                         }
                     }
                 }
