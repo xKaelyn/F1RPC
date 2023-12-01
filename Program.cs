@@ -5,6 +5,7 @@ using CSharpDiscordWebhook.NET;
 using CSharpDiscordWebhook.NET.Discord;
 using F1RPC.Configuration;
 using F1Sharp;
+using F1Sharp.Data;
 using F1Sharp.Packets;
 using NetDiscordRpc;
 using NetDiscordRpc.RPC;
@@ -190,6 +191,13 @@ namespace F1RPC
             int finalResultStatus = 0;
             int weatherId = 0;
             string weatherConditions = "";
+            int numPitStops = 0;
+            int speedTrapFastestDriverIdx = 0;
+            float speedTrapFastestSpeedKmh = 0.0f;
+            float speedTrapFastestSpeedMph = 0.0f;
+            float fastestLapTime = 0.0f;
+            int fastestLapDriverIdx = 0;
+            ParticipantData fastestLapDriver = new ParticipantData();
             var button = new NetDiscordRpc.RPC.Button[]
             {
                 new NetDiscordRpc.RPC.Button
@@ -212,6 +220,16 @@ namespace F1RPC
                 Client_OnLobbyInfoDataReceive(packet, discord);
             client.OnFinalClassificationDataReceive += async (packet) =>
                 await Client_OnFinalClassificationDataReceiveAsync(packet, discord);
+            client.OnEventDetailsReceive += (packet) =>
+                Client_OnEventDetailsReceive(packet, discord);
+
+            void Client_OnEventDetailsReceive(EventPacket packet, DiscordRPC discord)
+            {
+                fastestLapTime = packet.eventDetails.fastestLap.lapTime;
+                fastestLapDriverIdx = packet.eventDetails.fastestLap.vehicleIdx;
+                speedTrapFastestDriverIdx = packet.eventDetails.sppedTrap.vehicleIdx;
+                speedTrapFastestSpeedKmh = packet.eventDetails.sppedTrap.speed;
+            }
 
             // Method for when receiving lap data - used for getting lap number
             void Client_OnLapDataReceive(LapDataPacket packet)
@@ -220,6 +238,7 @@ namespace F1RPC
                 lapNumber = packet.lapData[playerIndex].currentLapNum;
                 currentPosition = packet.lapData[playerIndex].carPosition;
                 totalWarnings = packet.lapData[playerIndex].totalWarnings;
+                numPitStops = packet.lapData[playerIndex].numPitStops;
 
                 // Percentage for race completion - treat lap 1 as 0% and last lap as 100%
                 if (lapNumber == 1)
@@ -447,7 +466,30 @@ namespace F1RPC
                                         Value =
                                             $"{(gridPosition < finalPosition ? "-" : "+ ")}{Math.Abs(gridPosition - finalPosition)}",
                                         Inline = true
+                                    },
+                                    new EmbedField()
+                                    {
+                                        Name = "Number of Pit Stops",
+                                        Value = $"{numPitStops}",
+                                        Inline = true
+                                    },
+                                    new EmbedField()
+                                    {
+                                        Name = "Championship Points Earned",
+                                        Value = $"{finalPoints}",
+                                        Inline = true
+                                    },
+                                    new EmbedField()
+                                    {
+                                        Name = "Top Speed Achieved",
+                                        Value =
+                                            $"{speedTrapFastestSpeedKmh} km/h / ({ConvertKmhToMph(speedTrapFastestSpeedKmh)} mp/h)",
                                     }
+                                },
+                                Footer = new EmbedFooter()
+                                {
+                                    Text =
+                                        $"xKaelyn/F1RPC ~ Version {Assembly.GetExecutingAssembly().GetName().Version}"
                                 }
                             };
                             message.Embeds.Add(embed);
@@ -542,6 +584,7 @@ namespace F1RPC
                 totalParticipants = packet.numActiveCars;
                 teamId = (int)packet.participants[playerIndex].teamId;
                 playerName = new string(packet.participants[playerIndex].name);
+                fastestLapDriver = packet.participants[fastestLapDriverIdx];
                 var playerPlatformInt = (int)packet.participants[playerIndex].platform;
 
                 // If player is on Steam or Origin/EA App
@@ -942,6 +985,11 @@ namespace F1RPC
                 Log.Information($"Updated Discord Status: {discord.CurrentPresence.Details}");
             }
             await Task.Delay(-1).ConfigureAwait(false);
+        }
+
+        double ConvertKmhToMph(double kmh)
+        {
+            return kmh * 0.621371;
         }
     }
 }
