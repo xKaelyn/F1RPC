@@ -58,7 +58,7 @@ namespace F1RPC
                 .Information()
                 .CreateLogger();
 
-            Log.Information("F1RPC | Version 1.0.0.1");
+            Log.Information("F1RPC | Version 1.0.0.3");
             Log.Information("Program booting..");
 
             try
