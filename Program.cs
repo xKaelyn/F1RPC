@@ -1,8 +1,12 @@
 ﻿using System.Diagnostics;
+using System.Drawing;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using CSharpDiscordWebhook.NET;
+using CSharpDiscordWebhook.NET.Discord;
 using F1RPC.Configuration;
 using F1Sharp;
+using F1Sharp.Data;
 using F1Sharp.Packets;
 using NetDiscordRpc;
 using NetDiscordRpc.RPC;
@@ -16,11 +20,28 @@ namespace F1RPC
     public class F1RPC
     {
         public DiscordRPC? discord { get; private set; }
+        public DiscordWebhook? webhook { get; private set; } = new DiscordWebhook();
         public static ConfigJson Config { get; private set; } = new ConfigJson();
+        public string? projectDirectory { get; set; }
+        public bool? isRunningOnMacOS { get; set; }
 
         static void Main(string[] args)
         {
-            var f1 = new F1RPC();
+            var f1 = new F1RPC
+            {
+                isRunningOnMacOS = RuntimeInformation.IsOSPlatform(OSPlatform.OSX)
+            };
+
+            if (f1.isRunningOnMacOS == true)
+            {
+                f1.projectDirectory = Path.GetDirectoryName(
+                    Assembly.GetExecutingAssembly().Location
+                );
+            }
+            else
+            {
+                f1.projectDirectory = Directory.GetCurrentDirectory();
+            }
 
             Log.Logger = new LoggerConfiguration()
                 .WriteTo
@@ -30,7 +51,7 @@ namespace F1RPC
                 )
                 .WriteTo
                 .File(
-                    "logs/log.txt",
+                    $"{f1.projectDirectory}/logs/F1RPC.log",
                     outputTemplate: "{Timestamp:dd MMM yyyy - hh:mm:ss tt} [{Level:u3}] {Message:lj}{NewLine}{Exception}",
                     rollingInterval: RollingInterval.Day,
                     restrictedToMinimumLevel: LogEventLevel.Information
@@ -39,7 +60,7 @@ namespace F1RPC
                 .Information()
                 .CreateLogger();
 
-            Log.Information("F1RPC | Version 1.0.0.1");
+            Log.Information("F1RPC | Version 1.0.0.3");
             Log.Information("Program booting..");
 
             try
@@ -66,11 +87,12 @@ namespace F1RPC
             var configJson = new ConfigJson();
             int port = 0;
             string json = "";
+            bool webhookEnabled = false;
 
             // Check to see if it's running on MacOS as the path is handled differently.
             // For some reason, when running a MacOS program, the working directory is the root of the drive.
             // Not the program directory.
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            if (isRunningOnMacOS == true)
             {
                 var projectDirectory = Path.GetDirectoryName(
                     Assembly.GetExecutingAssembly().Location
@@ -80,7 +102,7 @@ namespace F1RPC
                         $"{projectDirectory}/assets/config/Configuration.json"
                     )
                     .ConfigureAwait(false);
-                var configPath = String.Format(
+                var configPath = string.Format(
                     $"{projectDirectory}/assets/config/Configuration.json"
                 );
 
@@ -89,8 +111,8 @@ namespace F1RPC
                     Config = JsonConvert.DeserializeObject<ConfigJson>(json);
                 }
             }
-            // If running Windows, use the previous code.
-            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            // Otherwise, use the previous code.
+            else
             {
                 json = await File.ReadAllTextAsync("assets/config/Configuration.json")
                     .ConfigureAwait(false);
@@ -112,6 +134,22 @@ namespace F1RPC
                 return;
             }
 
+            if (configJson.WebhookUrl == "YOUR_WEBHOOK_URL_HERE")
+            {
+                Log.Warning(
+                    "If you wish to use the Discord Webhook feature, make sure to set your webhook URL in assets/config/Configuration.json."
+                );
+                webhookEnabled = false;
+            }
+            else
+            {
+                Log.Information(
+                    "Discord Webhook feature enabled - final race classification data will be sent to the webhook."
+                );
+                webhook.Uri = new Uri(configJson.WebhookUrl);
+                webhookEnabled = true;
+            }
+
             discord = new DiscordRPC(configJson.AppId);
 
             // Let's actually bring the Discord client online
@@ -128,6 +166,7 @@ namespace F1RPC
 
             // Various variables to use
             int teamId = 0;
+            string playerName = "";
             string teamName = "";
             var track = "";
             var currentTrackId = "";
@@ -135,6 +174,12 @@ namespace F1RPC
             int totalLaps = 0;
             int formulaType = 0;
             string sessionType = "";
+            int penalties = 0;
+            int totalWarnings = 0;
+            int cornerCuttingWarnings = 0;
+            int safetyCars = 0;
+            int virtualSafetyCars = 0;
+            int redFlags = 0;
             int playerIndex = 0;
             int currentPosition = 0;
             int totalParticipants = 0;
@@ -142,11 +187,18 @@ namespace F1RPC
             double raceCompletion = 0.0;
             int lobbyPlayerCount = 0;
             int finalPosition = 0;
-            int finalGridPosition = 0;
+            int gridPosition = 0;
             int finalPoints = 0;
             int finalResultStatus = 0;
             int weatherId = 0;
             string weatherConditions = "";
+            int numPitStops = 0;
+            int speedTrapFastestDriverIdx = 0;
+            float speedTrapFastestSpeedKmh = 0.0f;
+            List<dynamic> penaltiesList = new List<dynamic>();
+            float fastestLapTime = 0.0f;
+            int fastestLapDriverIdx = 0;
+            ParticipantData fastestLapDriver = new ParticipantData();
             var button = new NetDiscordRpc.RPC.Button[]
             {
                 new NetDiscordRpc.RPC.Button
@@ -169,6 +221,24 @@ namespace F1RPC
                 Client_OnLobbyInfoDataReceive(packet, discord);
             client.OnFinalClassificationDataReceive += async (packet) =>
                 await Client_OnFinalClassificationDataReceiveAsync(packet, discord);
+            client.OnEventDetailsReceive += (packet) =>
+                Client_OnEventDetailsReceive(packet, discord);
+
+            void Client_OnEventDetailsReceive(EventPacket packet, DiscordRPC discord)
+            {
+                fastestLapTime = packet.eventDetails.fastestLap.lapTime;
+                fastestLapDriverIdx = packet.eventDetails.fastestLap.vehicleIdx;
+                speedTrapFastestDriverIdx = packet.eventDetails.sppedTrap.vehicleIdx;
+                speedTrapFastestSpeedKmh = packet.eventDetails.sppedTrap.speed;
+
+                // If new event is a penalty, add it to the penalty list
+                // WIP: Add penalty type to list to display via embed
+                if (new string(packet.eventStringCode) == "PENA")
+                {
+                    penaltiesList.Add(packet.eventDetails.penalty);
+                    penalties = penaltiesList.Count;
+                }
+            }
 
             // Method for when receiving lap data - used for getting lap number
             void Client_OnLapDataReceive(LapDataPacket packet)
@@ -176,6 +246,8 @@ namespace F1RPC
                 playerIndex = packet.header.playerCarIndex;
                 lapNumber = packet.lapData[playerIndex].currentLapNum;
                 currentPosition = packet.lapData[playerIndex].carPosition;
+                totalWarnings = packet.lapData[playerIndex].totalWarnings;
+                numPitStops = packet.lapData[playerIndex].numPitStops;
 
                 // Percentage for race completion - treat lap 1 as 0% and last lap as 100%
                 if (lapNumber == 1)
@@ -233,13 +305,13 @@ namespace F1RPC
             )
             {
                 finalPosition = packet.classificationData[playerIndex].position;
-                finalGridPosition = packet.classificationData[playerIndex].gridPosition;
+                gridPosition = packet.classificationData[playerIndex].gridPosition;
                 finalPoints = packet.classificationData[playerIndex].points;
                 finalResultStatus = (int)packet.classificationData[playerIndex].resultStatus;
 
                 // To-Do: Add session best lap time to presence
                 // If user finished a session, but it's not a race
-                if (sessionType != "Race" || sessionType != "Race 2" || sessionType != "Race 3")
+                if (sessionType != "Race" && sessionType != "Race 2" && sessionType != "Race 3")
                 {
                     discord.SetPresence(
                         new RichPresence
@@ -259,7 +331,7 @@ namespace F1RPC
                 // If user finished the race
                 if (finalResultStatus == 3)
                 {
-                    if (sessionType != "Race" || sessionType != "Race 2" || sessionType != "Race 3")
+                    if (sessionType != "Race" && sessionType != "Race 2" && sessionType != "Race 3")
                     {
                         discord.SetPresence(
                             new RichPresence
@@ -281,7 +353,7 @@ namespace F1RPC
                             new RichPresence
                             {
                                 Details =
-                                    $"Finished: P{finalPosition} / P{totalParticipants} | Started: P{finalGridPosition} | Track: {track}",
+                                    $"Finished: P{finalPosition} / P{totalParticipants} | Started: P{gridPosition} | Track: {track}",
                                 State =
                                     $"Racing for {teamName} | {finalPoints} points earned | Using {playerPlatform}",
                                 Assets = new Assets
@@ -292,6 +364,113 @@ namespace F1RPC
                                 Buttons = button
                             }
                         );
+                        if (webhookEnabled == true)
+                        {
+                            DiscordMessage message = new DiscordMessage();
+                            DiscordEmbed embed = new DiscordEmbed
+                            {
+                                Author = new EmbedAuthor()
+                                {
+                                    Name = "F1RPC",
+                                    Url = new Uri("https://github.com/xkaelyn/f1rpc"),
+                                },
+                                Title = "Race Finished",
+                                Url = new Uri("https://github.com/xkaelyn/f1rpc"),
+                                Color = GetEmbedColorByPosition(finalPosition),
+                                Fields = new List<EmbedField>()
+                                {
+                                    new EmbedField()
+                                    {
+                                        Name = "Date & Time",
+                                        Value = $"{DateTime.Now}",
+                                    },
+                                    new EmbedField() { Name = "Driver", Value = playerName },
+                                    new EmbedField() { Name = "Track", Value = track },
+                                    new EmbedField() { Name = "Team", Value = teamName },
+                                    new EmbedField()
+                                    {
+                                        Name = "Virtual Safety Cars",
+                                        Value = $"{virtualSafetyCars}",
+                                        Inline = true
+                                    },
+                                    new EmbedField()
+                                    {
+                                        Name = "Safety Cars",
+                                        Value = $"{safetyCars}",
+                                        Inline = true
+                                    },
+                                    new EmbedField()
+                                    {
+                                        Name = "Red Flags",
+                                        Value = $"{redFlags}",
+                                        Inline = true
+                                    },
+                                    new EmbedField()
+                                    {
+                                        Name = "Penalties",
+                                        Value = $"{penalties}",
+                                        Inline = true
+                                    },
+                                    new EmbedField()
+                                    {
+                                        Name = "Warnings",
+                                        Value = $"{totalWarnings}",
+                                        Inline = true
+                                    },
+                                    new EmbedField()
+                                    {
+                                        Name = "Corner Cut Warnings",
+                                        Value = $"{cornerCuttingWarnings}",
+                                        Inline = true
+                                    },
+                                    new EmbedField()
+                                    {
+                                        Name = "Starting Position",
+                                        Value = $"P{gridPosition}",
+                                        Inline = true
+                                    },
+                                    new EmbedField()
+                                    {
+                                        Name = "Final Position",
+                                        Value = $"P{finalPosition}",
+                                        Inline = true
+                                    },
+                                    new EmbedField()
+                                    {
+                                        Name = "Position Change",
+                                        Value =
+                                            $"{(gridPosition < finalPosition ? "-" : "+ ")}{Math.Abs(gridPosition - finalPosition)}",
+                                        Inline = true
+                                    },
+                                    new EmbedField()
+                                    {
+                                        Name = "Number of Pit Stops",
+                                        Value = $"{numPitStops}",
+                                        Inline = true
+                                    },
+                                    new EmbedField()
+                                    {
+                                        Name = "Championship Points Earned",
+                                        Value = $"{finalPoints}",
+                                        Inline = true
+                                    },
+                                    new EmbedField()
+                                    {
+                                        Name = "Top Speed Achieved In Session",
+                                        Value =
+                                            $"{speedTrapFastestSpeedKmh} km/h / ({ConvertKmhToMph(speedTrapFastestSpeedKmh)} mp/h) by {fastestLapDriver.name}.",
+                                        Inline = true
+                                    }
+                                },
+                                Footer = new EmbedFooter()
+                                {
+                                    Text =
+                                        $"xKaelyn/F1RPC ~ Version {Assembly.GetExecutingAssembly().GetName().Version}"
+                                }
+                            };
+                            message.Embeds.Add(embed);
+                            await webhook.SendAsync(message);
+                        }
                     }
                 }
 
@@ -301,7 +480,7 @@ namespace F1RPC
                     discord.SetPresence(
                         new RichPresence
                         {
-                            Details = $"DNF | Started: P{finalGridPosition} | Track: {track}",
+                            Details = $"DNF | Started: P{gridPosition} | Track: {track}",
                             State = $"Racing for {teamName} | Using {playerPlatform}",
                             Assets = new Assets
                             {
@@ -319,8 +498,7 @@ namespace F1RPC
                     discord.SetPresence(
                         new RichPresence
                         {
-                            Details =
-                                $"Disqualified | Started: P{finalGridPosition} | Track: {track}",
+                            Details = $"Disqualified | Started: P{gridPosition} | Track: {track}",
                             State = $"Racing for {teamName} | Using {playerPlatform}",
                             Assets = new Assets
                             {
@@ -356,7 +534,7 @@ namespace F1RPC
                     discord.SetPresence(
                         new RichPresence
                         {
-                            Details = $"Retired | Started: P{finalGridPosition} | Track: {track}",
+                            Details = $"Retired | Started: P{gridPosition} | Track: {track}",
                             State = $"Racing for {teamName} | Using {playerPlatform}",
                             Assets = new Assets
                             {
@@ -381,27 +559,28 @@ namespace F1RPC
                 playerIndex = packet.header.playerCarIndex;
                 totalParticipants = packet.numActiveCars;
                 teamId = (int)packet.participants[playerIndex].teamId;
+                playerName = new string(packet.participants[playerIndex].name);
+                fastestLapDriver = packet.participants[fastestLapDriverIdx];
+
                 var playerPlatformInt = (int)packet.participants[playerIndex].platform;
 
-                // If player is on Steam or Origin/EA App
-                if (playerPlatformInt == 1 || playerPlatformInt == 6)
+                switch (playerPlatformInt)
                 {
-                    playerPlatform = "PC";
-                }
-                // If player is on PlayStation
-                else if (playerPlatformInt == 3)
-                {
-                    playerPlatform = "PlayStation";
-                }
-                // If player is on Xbox
-                else if (playerPlatformInt == 4)
-                {
-                    playerPlatform = "Xbox";
-                }
-                // Otherwise, platform unknown
-                else
-                {
-                    playerPlatform = "Unknown";
+                    case 1:
+                        playerPlatform = "PC (Steam)";
+                        break;
+                    case 6:
+                        playerPlatform = "PC (Origin/EA)";
+                        break;
+                    case 3:
+                        playerPlatform = "PlayStation";
+                        break;
+                    case 4:
+                        playerPlatform = "Xbox";
+                        break;
+                    default:
+                        playerPlatform = "Unknown";
+                        break;
                 }
 
                 teamName = GetTeamNameFromId(teamId);
@@ -540,6 +719,9 @@ namespace F1RPC
                 totalLaps = packet.totalLaps;
                 weatherId = (int)packet.weather;
                 currentTrackId = packet.trackId.ToString().ToLower();
+                virtualSafetyCars = packet.numVirtualSafetyCarPeriods;
+                safetyCars = packet.numSafetyCarPeriods;
+                redFlags = packet.numRedFlagPeriods;
 
                 weatherConditions = GetWeatherConditions(weatherId);
 
@@ -778,6 +960,40 @@ namespace F1RPC
                 Log.Information($"Updated Discord Status: {discord.CurrentPresence.Details}");
             }
             await Task.Delay(-1).ConfigureAwait(false);
+        }
+
+        private DiscordColor GetEmbedColorByPosition(int finalPosition)
+        {
+            if (finalPosition == 1)
+            {
+                var color = new DiscordColor(Color.Gold);
+                return color;
+            }
+            if (finalPosition == 2)
+            {
+                var color = new DiscordColor(Color.Silver);
+                return color;
+            }
+            if (finalPosition == 3)
+            {
+                var color = new DiscordColor(Color.SaddleBrown);
+                return color;
+            }
+            if (finalPosition >= 4 && finalPosition <= 10)
+            {
+                var color = new DiscordColor(Color.Cyan);
+                return color;
+            }
+            else
+            {
+                var color = new DiscordColor(Color.White);
+                return color;
+            }
+        }
+
+        double ConvertKmhToMph(double kmh)
+        {
+            return kmh * 0.621371;
         }
     }
 }

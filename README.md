@@ -23,6 +23,7 @@ A simple, but effective, Discord RPC program for EA's F1 23.
 - Displays the player's current team (Red Bull, Alpine, Trident, etc).
 - Displays the current lap and the amount of laps remaining, along with an approximation of race completion.
 - Displays the track the player is at, along with icons for the country the track is in.
+- (Optional) Send all data from "Final Classification" packet to a Discord Webhook.
 
 #### Using the program
 You have two choices to using the program. You can either:
@@ -52,4 +53,5 @@ You are more than welcome to contribute to the code, just download **[Visual Stu
 - Microsoft Visual Studio 2022
 - [**f1-sharp**](https://github.com/gvescu/f1-sharp) by gvescu
 - [**net-discord-rpc**](https://github.com/HeroesReplay/net-discord-rpc) by HeroesReplay
+- [**CSharpDiscordWebhook**](https://github.com/N4T4NM/CSharpDiscordWebhook) by N4T4NM
 - [**iso-country-flags-svg-collection**](https://github.com/joielechong/iso-country-flags-svg-collection?tab=readme-ov-file) by joielechong
