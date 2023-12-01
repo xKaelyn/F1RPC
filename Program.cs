@@ -20,7 +20,7 @@ namespace F1RPC
     public class F1RPC
     {
         public DiscordRPC? discord { get; private set; }
-        public DiscordWebhook? webhook { get; private set; } = new DiscordWebhook();
+        public DiscordWebhook webhook { get; private set; } = new DiscordWebhook();
         public static ConfigJson Config { get; private set; } = new ConfigJson();
         public string? projectDirectory { get; set; }
         public bool? isRunningOnMacOS { get; set; }
@@ -221,10 +221,9 @@ namespace F1RPC
                 Client_OnLobbyInfoDataReceive(packet, discord);
             client.OnFinalClassificationDataReceive += async (packet) =>
                 await Client_OnFinalClassificationDataReceiveAsync(packet, discord);
-            client.OnEventDetailsReceive += (packet) =>
-                Client_OnEventDetailsReceive(packet, discord);
+            client.OnEventDetailsReceive += (packet) => Client_OnEventDetailsReceive(packet);
 
-            void Client_OnEventDetailsReceive(EventPacket packet, DiscordRPC discord)
+            void Client_OnEventDetailsReceive(EventPacket packet)
             {
                 fastestLapTime = packet.eventDetails.fastestLap.lapTime;
                 fastestLapDriverIdx = packet.eventDetails.fastestLap.vehicleIdx;
@@ -369,7 +368,7 @@ namespace F1RPC
                             DiscordMessage message = new DiscordMessage();
                             DiscordEmbed embed = new DiscordEmbed
                             {
-                                Author = new EmbedAuthor()
+                                Author = new EmbedAuthor
                                 {
                                     Name = "F1RPC",
                                     Url = new Uri("https://github.com/xkaelyn/f1rpc"),
@@ -384,77 +383,77 @@ namespace F1RPC
                                         Name = "Date & Time",
                                         Value = $"{DateTime.Now}",
                                     },
-                                    new EmbedField() { Name = "Driver", Value = playerName },
-                                    new EmbedField() { Name = "Track", Value = track },
-                                    new EmbedField() { Name = "Team", Value = teamName },
-                                    new EmbedField()
+                                    new EmbedField { Name = "Driver", Value = playerName },
+                                    new EmbedField { Name = "Track", Value = track },
+                                    new EmbedField { Name = "Team", Value = teamName },
+                                    new EmbedField
                                     {
                                         Name = "Virtual Safety Cars",
                                         Value = $"{virtualSafetyCars}",
                                         Inline = true
                                     },
-                                    new EmbedField()
+                                    new EmbedField
                                     {
                                         Name = "Safety Cars",
                                         Value = $"{safetyCars}",
                                         Inline = true
                                     },
-                                    new EmbedField()
+                                    new EmbedField
                                     {
                                         Name = "Red Flags",
                                         Value = $"{redFlags}",
                                         Inline = true
                                     },
-                                    new EmbedField()
+                                    new EmbedField
                                     {
                                         Name = "Penalties",
                                         Value = $"{penalties}",
                                         Inline = true
                                     },
-                                    new EmbedField()
+                                    new EmbedField
                                     {
                                         Name = "Warnings",
                                         Value = $"{totalWarnings}",
                                         Inline = true
                                     },
-                                    new EmbedField()
+                                    new EmbedField
                                     {
                                         Name = "Corner Cut Warnings",
                                         Value = $"{cornerCuttingWarnings}",
                                         Inline = true
                                     },
-                                    new EmbedField()
+                                    new EmbedField
                                     {
                                         Name = "Starting Position",
                                         Value = $"P{gridPosition}",
                                         Inline = true
                                     },
-                                    new EmbedField()
+                                    new EmbedField
                                     {
                                         Name = "Final Position",
                                         Value = $"P{finalPosition}",
                                         Inline = true
                                     },
-                                    new EmbedField()
+                                    new EmbedField
                                     {
                                         Name = "Position Change",
                                         Value =
                                             $"{(gridPosition < finalPosition ? "-" : "+ ")}{Math.Abs(gridPosition - finalPosition)}",
                                         Inline = true
                                     },
-                                    new EmbedField()
+                                    new EmbedField
                                     {
                                         Name = "Number of Pit Stops",
                                         Value = $"{numPitStops}",
                                         Inline = true
                                     },
-                                    new EmbedField()
+                                    new EmbedField
                                     {
                                         Name = "Championship Points Earned",
                                         Value = $"{finalPoints}",
                                         Inline = true
                                     },
-                                    new EmbedField()
+                                    new EmbedField
                                     {
                                         Name = "Top Speed Achieved In Session",
                                         Value =
@@ -462,7 +461,7 @@ namespace F1RPC
                                         Inline = true
                                     }
                                 },
-                                Footer = new EmbedFooter()
+                                Footer = new EmbedFooter
                                 {
                                     Text =
                                         $"xKaelyn/F1RPC ~ Version {Assembly.GetExecutingAssembly().GetName().Version}"
