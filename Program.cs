@@ -149,6 +149,7 @@ namespace F1RPC
 
             // Various variables to use
             int teamId = 0;
+            string playerName = "";
             string teamName = "";
             var track = "";
             var currentTrackId = "";
@@ -156,6 +157,9 @@ namespace F1RPC
             int totalLaps = 0;
             int formulaType = 0;
             string sessionType = "";
+            int safetyCars = 0;
+            int virtualSafetyCars = 0;
+            int redFlags = 0;
             int playerIndex = 0;
             int currentPosition = 0;
             int totalParticipants = 0;
@@ -313,6 +317,45 @@ namespace F1RPC
                                 Buttons = button
                             }
                         );
+                        if (webhookEnabled == true)
+                        {
+                            DiscordMessage message = new DiscordMessage();
+                            DiscordEmbed embed = new DiscordEmbed
+                            {
+                                Title = "F1 23 | Race Finished",
+                                Url = new Uri("https://github.com/xkaelyn/f1rpc"),
+                                // Color to be determined by race position
+                                Fields = new List<EmbedField>()
+                                {
+                                    new EmbedField()
+                                    {
+                                        Name = "Date & Time",
+                                        Value = $"{DateTime.Now}",
+                                    },
+                                    new EmbedField() { Name = "Driver", Value = playerName },
+                                    new EmbedField() { Name = "Track", Value = track },
+                                    new EmbedField() { Name = "Team", Value = teamName },
+                                    new EmbedField()
+                                    {
+                                        Name = "Virtual Safety Cars",
+                                        Value = $"{virtualSafetyCars}",
+                                        Inline = true
+                                    },
+                                    new EmbedField()
+                                    {
+                                        Name = "Safety Cars",
+                                        Value = $"{safetyCars}",
+                                        Inline = true
+                                    },
+                                    new EmbedField()
+                                    {
+                                        Name = "Red Flags",
+                                        Value = $"{redFlags}",
+                                        Inline = true
+                                    }
+                                }
+                            };
+                        }
                     }
                 }
 
@@ -402,6 +445,7 @@ namespace F1RPC
                 playerIndex = packet.header.playerCarIndex;
                 totalParticipants = packet.numActiveCars;
                 teamId = (int)packet.participants[playerIndex].teamId;
+                playerName = new string(packet.participants[playerIndex].name);
                 var playerPlatformInt = (int)packet.participants[playerIndex].platform;
 
                 // If player is on Steam or Origin/EA App
@@ -561,6 +605,9 @@ namespace F1RPC
                 totalLaps = packet.totalLaps;
                 weatherId = (int)packet.weather;
                 currentTrackId = packet.trackId.ToString().ToLower();
+                virtualSafetyCars = packet.numVirtualSafetyCarPeriods;
+                safetyCars = packet.numSafetyCarPeriods;
+                redFlags = packet.numRedFlagPeriods;
 
                 weatherConditions = GetWeatherConditions(weatherId);
 
