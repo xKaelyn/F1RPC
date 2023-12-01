@@ -20,10 +20,26 @@ namespace F1RPC
         public DiscordRPC? discord { get; private set; }
         public DiscordWebhook? webhook { get; private set; } = new DiscordWebhook();
         public static ConfigJson Config { get; private set; } = new ConfigJson();
+        public string? projectDirectory { get; set; }
+        public bool? isRunningOnMacOS { get; set; }
 
         static void Main(string[] args)
         {
-            var f1 = new F1RPC();
+            var f1 = new F1RPC
+            {
+                isRunningOnMacOS = RuntimeInformation.IsOSPlatform(OSPlatform.OSX)
+            };
+
+            if (f1.isRunningOnMacOS == true)
+            {
+                f1.projectDirectory = Path.GetDirectoryName(
+                    Assembly.GetExecutingAssembly().Location
+                );
+            }
+            else
+            {
+                f1.projectDirectory = Directory.GetCurrentDirectory();
+            }
 
             Log.Logger = new LoggerConfiguration()
                 .WriteTo
@@ -33,7 +49,7 @@ namespace F1RPC
                 )
                 .WriteTo
                 .File(
-                    "logs/log.txt",
+                    $"{f1.projectDirectory}/logs/F1RPC.log",
                     outputTemplate: "{Timestamp:dd MMM yyyy - hh:mm:ss tt} [{Level:u3}] {Message:lj}{NewLine}{Exception}",
                     rollingInterval: RollingInterval.Day,
                     restrictedToMinimumLevel: LogEventLevel.Information
@@ -69,13 +85,12 @@ namespace F1RPC
             var configJson = new ConfigJson();
             int port = 0;
             string json = "";
-            string url = "";
             bool webhookEnabled = false;
 
             // Check to see if it's running on MacOS as the path is handled differently.
             // For some reason, when running a MacOS program, the working directory is the root of the drive.
             // Not the program directory.
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            if (isRunningOnMacOS == true)
             {
                 var projectDirectory = Path.GetDirectoryName(
                     Assembly.GetExecutingAssembly().Location
@@ -94,8 +109,8 @@ namespace F1RPC
                     Config = JsonConvert.DeserializeObject<ConfigJson>(json);
                 }
             }
-            // If running Windows, use the previous code.
-            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            // Otherwise, use the previous code.
+            else
             {
                 json = await File.ReadAllTextAsync("assets/config/Configuration.json")
                     .ConfigureAwait(false);
@@ -307,34 +322,34 @@ namespace F1RPC
                             Url = new Uri("https://github.com/xkaelyn/f1rpc"),
                             // Color to be determined by race position
                             Fields = new List<EmbedField>()
+                            {
+                                new EmbedField()
                                 {
-                                    new EmbedField()
-                                    {
-                                        Name = "Date & Time",
-                                        Value = $"{DateTime.Now}",
-                                    },
-                                    new EmbedField() { Name = "Driver", Value = playerName },
-                                    new EmbedField() { Name = "Track", Value = track },
-                                    new EmbedField() { Name = "Team", Value = teamName },
-                                    new EmbedField()
-                                    {
-                                        Name = "Virtual Safety Cars",
-                                        Value = $"{virtualSafetyCars}",
-                                        Inline = true
-                                    },
-                                    new EmbedField()
-                                    {
-                                        Name = "Safety Cars",
-                                        Value = $"{safetyCars}",
-                                        Inline = true
-                                    },
-                                    new EmbedField()
-                                    {
-                                        Name = "Red Flags",
-                                        Value = $"{redFlags}",
-                                        Inline = true
-                                    }
+                                    Name = "Date & Time",
+                                    Value = $"{DateTime.Now}",
+                                },
+                                new EmbedField() { Name = "Driver", Value = playerName },
+                                new EmbedField() { Name = "Track", Value = track },
+                                new EmbedField() { Name = "Team", Value = teamName },
+                                new EmbedField()
+                                {
+                                    Name = "Virtual Safety Cars",
+                                    Value = $"{virtualSafetyCars}",
+                                    Inline = true
+                                },
+                                new EmbedField()
+                                {
+                                    Name = "Safety Cars",
+                                    Value = $"{safetyCars}",
+                                    Inline = true
+                                },
+                                new EmbedField()
+                                {
+                                    Name = "Red Flags",
+                                    Value = $"{redFlags}",
+                                    Inline = true
                                 }
+                            }
                         };
                         message.Embeds.Add(embed);
                         await webhook.SendAsync(message);
