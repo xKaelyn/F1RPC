@@ -198,6 +198,8 @@ namespace F1RPC
             float fastestLapTime = 0.0f;
             int fastestLapDriverIdx = 0;
             string fastestLapDriver = "";
+            int penaltyDriverIdx = 0;
+            string penaltyDriverName = "";
             var button = new NetDiscordRpc.RPC.Button[]
             {
                 // To-Do: Add custom color to button
@@ -225,196 +227,6 @@ namespace F1RPC
                 fastestLapDriverIdx = packet.eventDetails.fastestLap.vehicleIdx;
                 speedTrapFastestDriverIdx = packet.eventDetails.sppedTrap.vehicleIdx;
                 speedTrapFastestSpeedKmh = packet.eventDetails.sppedTrap.speed;
-
-                // If new event is a penalty, add it to the penalty list
-                // WIP: Add penalty type to list to display via embed
-                if (new string(packet.eventStringCode) == "PENA")
-                {
-                    string infringementType;
-                    // Case switch for infringement types
-                    switch (packet.eventDetails.penalty.infringementType)
-                    {
-                        case 0:
-                            infringementType = "Blocking by slow driving";
-                            break;
-                        case 1:
-                            infringementType = "Blocking by wrong way driving";
-                            break;
-                        case 2:
-                            infringementType = "Reversing off the start line";
-                            break;
-                        case 3:
-                            infringementType = "Big Collision";
-                            break;
-                        case 4:
-                            infringementType = "Small Collision";
-                            break;
-                        case 5:
-                            infringementType = "Collision, failed to hand back a single position";
-                            break;
-                        case 6:
-                            infringementType = "Collision, failed to hand back multiple positions";
-                            break;
-                        case 7:
-                            infringementType = "Corner cutting, gained time";
-                            break;
-                        case 8:
-                            infringementType = "Corner cutting, no time gained";
-                            break;
-                        case 9:
-                            infringementType = "Corner cutting, invalidated lap";
-                            break;
-                        case 10:
-                            infringementType = "Crossed pit exit line";
-                            break;
-                        case 11:
-                            infringementType = "Ignoring blue flags";
-                            break;
-                        case 12:
-                            infringementType = "Ignoring yellow flags";
-                            break;
-                        case 13:
-                            infringementType = "Ignoring drive through";
-                            break;
-                        case 14:
-                            infringementType = "Too many drive throughs";
-                            break;
-                        case 15:
-                            infringementType = "Drive through reminder serve within n laps";
-                            break;
-                        case 16:
-                            infringementType = "Drive through reminder serve this lap";
-                            break;
-                        case 17:
-                            infringementType = "Speeding in the pit lane";
-                            break;
-                        case 18:
-                            infringementType = "Parked for too long";
-                            break;
-                        case 19:
-                            infringementType = "Ignoring tyre regulations";
-                            break;
-                        case 20:
-                            infringementType = "Too many penalties";
-                            break;
-                        case 21:
-                            infringementType = "Multiple warnings";
-                            break;
-                        case 22:
-                            infringementType = "Approaching disqualification";
-                            break;
-                        case 23:
-                            infringementType = "Tyre regulations select single";
-                            break;
-                        case 24:
-                            infringementType = "Tyre regulations select multiple";
-                            break;
-                        case 25:
-                            infringementType = "Lap invalidated corner cutting";
-                            break;
-                        case 26:
-                            infringementType = "Lap invalidated running wide";
-                            break;
-                        case 27:
-                            infringementType = "Corner cutting, gained time (minor)";
-                            break;
-                        case 28:
-                            infringementType = "Corner cutting, gained time (significant)";
-                            break;
-                        case 29:
-                            infringementType = "Corner cutting, gained time (extreme)";
-                            break;
-                        case 30:
-                            infringementType = "Lap invalidated wall riding";
-                            break;
-                        case 31:
-                            infringementType = "Lap invalidated flashback used";
-                            break;
-                        case 32:
-                            infringementType = "Lap invalidated reset to track";
-                            break;
-                        case 33:
-                            infringementType = "Blocking the pitlane";
-                            break;
-                        case 34:
-                            infringementType = "Jump start";
-                            break;
-                        case 35:
-                            infringementType =
-                                "Collision with a vehicle on track under SC conditions";
-                            break;
-                        case 36:
-                            infringementType = "Illegal overtake under SC conditions";
-                            break;
-                        case 37:
-                            infringementType = "Exceeding delta time during SC";
-                            break;
-                        case 38:
-                            infringementType = "Exceeding delta time during VSC";
-                            break;
-                        case 39:
-                            infringementType = "Below minimum speed in formation lap";
-                            break;
-                        case 40:
-                            infringementType = "Invalid Parking in Formation Lap";
-                            break;
-                        case 41:
-                            infringementType = "Retired due to Mechanical Failure";
-                            break;
-                        case 42:
-                            infringementType = "Retired due to car being terminally damaged";
-                            break;
-                        case 43:
-                            infringementType = "Exceeded 10 car lengths under SC conditions";
-                            break;
-                        case 44:
-                            infringementType = "Black Flag";
-                            break;
-                        case 45:
-                            infringementType = "Unserved Stop Go Penalty";
-                            break;
-                        case 46:
-                            infringementType = "Unserved Drive Through Penalty";
-                            break;
-                        case 47:
-                            infringementType = "Power Unit component change";
-                            break;
-                        case 48:
-                            infringementType = "Gearbox change";
-                            break;
-                        case 49:
-                            infringementType = "Component change within Parc Ferme";
-                            break;
-                        case 50:
-                            infringementType = "Grid penalty within League";
-                            break;
-                        case 51:
-                            infringementType = "Retry Penalty";
-                            break;
-                        case 52:
-                            infringementType = "Illegal time gain";
-                            break;
-                        case 53:
-                            infringementType = "Mandatory pitstop";
-                            break;
-                        case 54:
-                            infringementType = "Attribute assigned";
-                            break;
-                        default:
-                            infringementType = "Unknown";
-                            break;
-                    }
-
-                    var penaltyToAdd = new
-                    {
-                        VehicleIdx = packet.eventDetails.penalty.vehicleIdx,
-                        DriverName = GetDriverNameFromIdx(packet.eventDetails.penalty.vehicleIdx),
-                        Reason = infringementType
-                    };
-
-                    penaltiesList.Add(penaltyToAdd);
-                    penalties = penaltiesList.Count;
-                }
             }
 
             // Method for when receiving lap data - used for getting lap number
@@ -754,6 +566,8 @@ namespace F1RPC
                 totalParticipants = packet.numActiveCars;
                 teamId = (int)packet.participants[playerIndex].teamId;
 
+                penaltyDriverName = new string(packet.participants[penaltyDriverIdx].name);
+
                 if (playerIndex >= 0 && playerIndex < packet.participants.Length)
                 {
                     playerName = new string(packet.participants[playerIndex].name);
@@ -884,7 +698,7 @@ namespace F1RPC
                 {
                     return team.Name;
                 }
-                return "";
+                return "Unknown";
             }
 
             // Method for getting weather condition from weather id (as F1 uses integers)
@@ -1169,6 +983,58 @@ namespace F1RPC
                 Log.Information($"Updated Discord Status: {discord.CurrentPresence.Details}");
             }
             await Task.Delay(-1).ConfigureAwait(false);
+        }
+
+        private string GetDriverName(object driverId)
+        {
+            switch (driverId)
+            {
+                case 0:
+                    return "Carlos Sainz";
+                case 2:
+                    return "Daniel Ricciardo";
+                case 3:
+                    return "Fernando Alonso";
+                case 7:
+                    return "Lewis Hamilton";
+                case 9:
+                    return "Max Verstappen";
+                case 10:
+                    return "Nico Hulkenberg";
+                case 11:
+                    return "Kevin Magnussen";
+                case 14:
+                    return "Sergio Perez";
+                case 15:
+                    return "Valtteri Bottas";
+                case 17:
+                    return "Esteban Ocon";
+                case 19:
+                    return "Lance Stroll";
+                case 50:
+                    return "George Russell";
+                case 54:
+                    return "Lando Norris";
+                case 58:
+                    return "Charles Leclerc";
+                case 59:
+                    return "Pierre Gasly";
+                case 62:
+                    return "Alexander Albon";
+                case 72:
+                    return "Devon Butler";
+                case 80:
+                    return "Zhou Guanyu";
+                case 94:
+                    return "Yuki Tsunoda";
+                case 112:
+                    return "Oscar Piastri";
+                case 132:
+                    return "Logan Sargeant";
+                default:
+                    Log.Fatal("Unknown driver ID.");
+                    return string.Empty;
+            }
         }
 
         private DiscordColor GetEmbedColorByPosition(int finalPosition)
