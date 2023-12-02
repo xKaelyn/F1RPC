@@ -5,7 +5,6 @@ using System.Runtime.InteropServices;
 using CSharpDiscordWebhook.NET.Discord;
 using F1RPC.Configuration;
 using F1Sharp;
-using F1Sharp.Data;
 using F1Sharp.Packets;
 using NetDiscordRpc;
 using NetDiscordRpc.RPC;
@@ -23,24 +22,16 @@ namespace F1RPC
         public static ConfigJson Config { get; private set; } = new ConfigJson();
         public string? projectDirectory { get; set; }
         public bool? isRunningOnMacOS { get; set; }
+        public Version? versionId { get; set; } = Assembly.GetExecutingAssembly().GetName().Version;
 
         static void Main(string[] args)
         {
-            var f1 = new F1RPC
-            {
-                isRunningOnMacOS = RuntimeInformation.IsOSPlatform(OSPlatform.OSX)
-            };
+            F1RPC f1 = new() { isRunningOnMacOS = RuntimeInformation.IsOSPlatform(OSPlatform.OSX) };
 
-            if (f1.isRunningOnMacOS == true)
-            {
-                f1.projectDirectory = Path.GetDirectoryName(
-                    Assembly.GetExecutingAssembly().Location
-                );
-            }
-            else
-            {
-                f1.projectDirectory = Directory.GetCurrentDirectory();
-            }
+            f1.projectDirectory =
+                f1.isRunningOnMacOS == true
+                    ? Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)
+                    : Directory.GetCurrentDirectory();
 
             Log.Logger = new LoggerConfiguration()
                 .WriteTo
@@ -59,7 +50,7 @@ namespace F1RPC
                 .Information()
                 .CreateLogger();
 
-            Log.Information("F1RPC | Version 1.0.0.3");
+            Log.Information($"F1RPC | Version {f1.versionId}");
             Log.Information("Program booting..");
 
             try
@@ -83,7 +74,7 @@ namespace F1RPC
 
         public async Task Initialize()
         {
-            var configJson = new ConfigJson();
+            ConfigJson configJson = new();
             int port = 0;
             string json = "";
             bool webhookEnabled = false;
@@ -93,7 +84,7 @@ namespace F1RPC
             // Not the program directory.
             if (isRunningOnMacOS == true)
             {
-                var projectDirectory = Path.GetDirectoryName(
+                string? projectDirectory = Path.GetDirectoryName(
                     Assembly.GetExecutingAssembly().Location
                 );
 
@@ -101,22 +92,20 @@ namespace F1RPC
                         $"{projectDirectory}/assets/config/Configuration.json"
                     )
                     .ConfigureAwait(false);
-                var configPath = string.Format(
+                string configPath = string.Format(
                     $"{projectDirectory}/assets/config/Configuration.json"
                 );
 
-                using (var fs = File.OpenRead(configPath))
-                {
-                    Config = JsonConvert.DeserializeObject<ConfigJson>(json);
-                }
+                using FileStream fs = File.OpenRead(configPath);
+                Config = JsonConvert.DeserializeObject<ConfigJson>(json);
             }
             // Otherwise, use the previous code.
             else
             {
                 json = await File.ReadAllTextAsync("assets/config/Configuration.json")
                     .ConfigureAwait(false);
-                using (var fs = File.OpenRead("assets/config/Configuration.json"))
-                    Config = JsonConvert.DeserializeObject<ConfigJson>(json);
+                using FileStream fs = File.OpenRead("assets/config/Configuration.json");
+                Config = JsonConvert.DeserializeObject<ConfigJson>(json);
             }
 
             configJson = JsonConvert.DeserializeObject<ConfigJson>(json);
@@ -127,12 +116,17 @@ namespace F1RPC
                 "If you have any problems, please raise a issue on GitHub and upload your log file found in the logs folder."
             );
 
+            // Check if the Discord App ID is set in the configuration file
+            // If not, throw an error and exit the program as it's required.
             if (configJson.AppId == "YOUR_APP_ID_HERE")
             {
                 Log.Error("Please set your Discord App ID in assets/config/Configuration.json");
                 return;
             }
 
+            // Check if the Discord Webhook URL is set in the configuration file
+            // If not, throw a warning and disable the webhook feature.
+            // Optional feature, so it's not required.
             if (configJson.WebhookUrl == "YOUR_WEBHOOK_URL_HERE")
             {
                 Log.Warning(
@@ -149,6 +143,7 @@ namespace F1RPC
                 webhookEnabled = true;
             }
 
+            // Create a new instance of DiscordRPC with the Discord App ID from the configuration file
             discord = new DiscordRPC(configJson.AppId);
 
             // Let's actually bring the Discord client online
@@ -158,12 +153,13 @@ namespace F1RPC
 
             Log.Information("Program initialized. Setting up client..");
 
+            // Create a new instance of the TelemetryClient class with the specified port
             TelemetryClient client = new(port);
 
             Log.Information($"Client initialized. Listening on port {port}.");
             Log.Information("Waiting for data..");
 
-            // Various variables to use
+            // Variables for storing various data
             int teamId = 0;
             string playerName = "";
             string teamName = "";
@@ -200,27 +196,27 @@ namespace F1RPC
             string fastestLapDriver = "";
             int penaltyDriverIdx = 0;
             string penaltyDriverName = "";
+            bool networkGame = false;
             var button = new NetDiscordRpc.RPC.Button[]
             {
-                // To-Do: Add custom color to button
                 new() { Label = "Powered by F1RPC", Url = "https://github.com/xKaelyn/F1RPC" }
             };
 
             // When first booting system, reset the status by showing a "in menu" presence
             resetStatus(discord);
 
-            // Event hookers (funny name eh?)
-            client.OnLapDataReceive += (packet) => Client_OnLapDataReceive(packet);
+            // Subscribe to the events for receiving data
+            client.OnLapDataReceive += Client_OnLapDataReceive;
             client.OnSessionDataReceive += (packet) =>
                 Client_OnSessionDataReceive(packet, discord, teamName);
-            client.OnParticipantsDataReceive += (packet) =>
-                Client_OnParticipantsDataReceive(packet);
+            client.OnParticipantsDataReceive += Client_OnParticipantsDataReceive;
             client.OnLobbyInfoDataReceive += (packet) =>
                 Client_OnLobbyInfoDataReceive(packet, discord);
             client.OnFinalClassificationDataReceive += async (packet) =>
                 await Client_OnFinalClassificationDataReceiveAsync(packet, discord);
-            client.OnEventDetailsReceive += (packet) => Client_OnEventDetailsReceive(packet);
+            client.OnEventDetailsReceive += Client_OnEventDetailsReceive;
 
+            // Method for when receiving event details - used for getting fastest lap and speed trap data
             void Client_OnEventDetailsReceive(EventPacket packet)
             {
                 fastestLapTime = packet.eventDetails.fastestLap.lapTime;
@@ -229,7 +225,8 @@ namespace F1RPC
                 speedTrapFastestSpeedKmh = packet.eventDetails.sppedTrap.speed;
             }
 
-            // Method for when receiving lap data - used for getting lap number
+            // Method for when receiving lap data
+            // This method is triggered when lap data is received from the telemetry client.
             void Client_OnLapDataReceive(LapDataPacket packet)
             {
                 playerIndex = packet.header.playerCarIndex;
@@ -238,18 +235,11 @@ namespace F1RPC
                 totalWarnings = packet.lapData[playerIndex].totalWarnings;
                 numPitStops = packet.lapData[playerIndex].numPitStops;
 
-                // Percentage for race completion - treat lap 1 as 0% and last lap as 100%
-                if (lapNumber == 1)
-                {
-                    raceCompletion = 0.0;
-                }
-                else
-                {
-                    raceCompletion = Math.Round(
-                        (double)(lapNumber - 1) / (double)(totalLaps - 1) * 100,
-                        2
-                    );
-                }
+                // Calculate the race completion percentage based on the current lap number and total laps
+                raceCompletion =
+                    lapNumber == 1
+                        ? 0.0
+                        : Math.Round((lapNumber - 1) / (double)(totalLaps - 1) * 100, 2);
             }
 
             // Method for when recieving lobby info
@@ -259,7 +249,7 @@ namespace F1RPC
                 lobbyPlayerCount = packet.numPlayers;
 
                 // Variable to change "player" to "players" if more than 1 player is in the lobby - no need to while loop this as it's only modified each time the data is received
-                var playerText = "";
+                string playerText = "";
                 if (lobbyPlayerCount > 1)
                 {
                     playerText = "players";
@@ -300,7 +290,7 @@ namespace F1RPC
 
                 // To-Do: Add session best lap time to presence
                 // If user finished a session, but it's not a race
-                if (sessionType != "Race" && sessionType != "Race 2" && sessionType != "Race 3")
+                if (sessionType is not "Race" and not "Race 2" and not "Race 3")
                 {
                     discord.SetPresence(
                         new RichPresence
@@ -320,7 +310,7 @@ namespace F1RPC
                 // If user finished the race
                 if (finalResultStatus == 3)
                 {
-                    if (sessionType != "Race" && sessionType != "Race 2" && sessionType != "Race 3")
+                    if (sessionType is not "Race" and not "Race 2" and not "Race 3")
                     {
                         discord.SetPresence(
                             new RichPresence
@@ -353,8 +343,22 @@ namespace F1RPC
                                 Buttons = button
                             }
                         );
+                        // Check if webhook feature is enabled
                         if (webhookEnabled == true)
                         {
+                            // Capitalize the first letter of the player name if it's not a network game
+                            // As otherwise, driver names are all uppercase - e.g RICCIARDO, VERSTAPPEN etc.
+                            string playerNameValue = "";
+                            if (!networkGame)
+                            {
+                                playerNameValue =
+                                    char.ToUpperInvariant(playerName[0])
+                                    + playerName.Substring(1).ToLowerInvariant();
+                            }
+                            else
+                            {
+                                playerNameValue = playerName;
+                            }
                             DiscordMessage message = new();
                             DiscordEmbed embed =
                                 new()
@@ -376,7 +380,7 @@ namespace F1RPC
                                     Fields = new List<EmbedField>()
                                     {
                                         new() { Name = "Date & Time", Value = $"{DateTime.Now}", },
-                                        new() { Name = "Driver", Value = playerName },
+                                        new() { Name = "Driver", Value = playerNameValue, },
                                         new() { Name = "Track", Value = track },
                                         new() { Name = "Team", Value = teamName },
                                         new()
@@ -445,19 +449,11 @@ namespace F1RPC
                                             Name = "Championship Points Earned",
                                             Value = $"{finalPoints}",
                                             Inline = true
-                                        },
-                                        new()
-                                        {
-                                            Name = "Top Speed Achieved In Session",
-                                            Value =
-                                                $"{speedTrapFastestSpeedKmh} km/h / ({ConvertKmhToMph(speedTrapFastestSpeedKmh)} mp/h) by {fastestLapDriver}.",
-                                            Inline = true
                                         }
                                     },
                                     Footer = new EmbedFooter
                                     {
-                                        Text =
-                                            $"xKaelyn/F1RPC ~ Version {Assembly.GetExecutingAssembly().GetName().Version}"
+                                        Text = $"xKaelyn/F1RPC ~ Version {versionId}"
                                     }
                                 };
                             message.Embeds.Add(embed);
@@ -568,168 +564,129 @@ namespace F1RPC
 
                 penaltyDriverName = new string(packet.participants[penaltyDriverIdx].name);
 
-                if (playerIndex >= 0 && playerIndex < packet.participants.Length)
-                {
-                    playerName = new string(packet.participants[playerIndex].name);
-                }
-                else
-                {
-                    playerName = "Unknown";
-                }
+                playerName =
+                    playerIndex >= 0 && playerIndex < packet.participants.Length
+                        ? new string(packet.participants[playerIndex].name)
+                        : "Unknown";
 
-                if (fastestLapDriverIdx >= 0 && fastestLapDriverIdx < packet.participants.Length)
-                {
-                    fastestLapDriver = new string(packet.participants[fastestLapDriverIdx].name);
-                }
-                else
-                {
-                    fastestLapDriver = "Unknown";
-                }
+                fastestLapDriver =
+                    fastestLapDriverIdx >= 0 && fastestLapDriverIdx < packet.participants.Length
+                        ? new string(packet.participants[fastestLapDriverIdx].name)
+                        : "Unknown";
 
                 var playerPlatformInt = (int)packet.participants[playerIndex].platform;
 
-                switch (playerPlatformInt)
+                playerPlatform = playerPlatformInt switch
                 {
-                    case 1:
-                        playerPlatform = "PC (Steam)";
-                        break;
-                    case 6:
-                        playerPlatform = "PC (Origin/EA)";
-                        break;
-                    case 3:
-                        playerPlatform = "PlayStation";
-                        break;
-                    case 4:
-                        playerPlatform = "Xbox";
-                        break;
-                    default:
-                        playerPlatform = "Unknown";
-                        break;
-                }
-
+                    1 => "PC (Steam)",
+                    6 => "PC (Origin/EA)",
+                    3 => "PlayStation",
+                    4 => "Xbox",
+                    _ => "Unknown",
+                };
                 teamName = GetTeamNameFromId(teamId);
             }
 
             // Method for getting team name from team id (as F1 uses integers)
             string GetTeamNameFromId(int teamId)
             {
-                var teamlist = new List<dynamic>
-                {
-                    new { GameId = 0, Name = "Mercedes-AMG Petronas F1 Team" },
-                    new { GameId = 1, Name = "Scuderia Ferrari" },
-                    new { GameId = 2, Name = "Oracle Red Bull Racing" },
-                    new { GameId = 3, Name = "Williams Racing" },
-                    new { GameId = 4, Name = "Aston Martin Aramco Cognizant F1 Team" },
-                    new { GameId = 5, Name = "BWT Alpine F1 Team" },
-                    new { GameId = 6, Name = "Scuderia AlphaTauri" },
-                    new { GameId = 7, Name = "Haas F1 Team" },
-                    new { GameId = 8, Name = "McLaren F1 Team" },
-                    new { GameId = 9, Name = "Alfa Romeo F1 Team ORLEN" },
-                    new { GameId = 85, Name = "Mercedes (2020)" },
-                    new { GameId = 86, Name = "Ferrari (2020)" },
-                    new { GameId = 87, Name = "Red Bull (2020)" },
-                    new { GameId = 88, Name = "Williams (2020)" },
-                    new { GameId = 89, Name = "Racing Point (2020)" },
-                    new { GameId = 90, Name = "Renault (2020)" },
-                    new { GameId = 91, Name = "AlphaTauri (2020)" },
-                    new { GameId = 92, Name = "Haas (2020)" },
-                    new { GameId = 93, Name = "McLaren (2020)" },
-                    new { GameId = 94, Name = "Alfa Romeo (2020)" },
-                    new { GameId = 95, Name = "Aston Martin DB11 V12" },
-                    new { GameId = 96, Name = "Aston Martin Vantage F1 Edition" },
-                    new { GameId = 97, Name = "Aston Martin Vantage Safety Car" },
-                    new { GameId = 98, Name = "Ferrari F8 Tributo" },
-                    new { GameId = 99, Name = "Ferrari Roma" },
-                    new { GameId = 100, Name = "McLaren 7205" },
-                    new { GameId = 101, Name = "McLaren Artura" },
-                    new { GameId = 102, Name = "Mercedes AMG GT Black Series Safety Car" },
-                    new { GameId = 103, Name = "Mercedes AMG GTR Pro" },
-                    new { GameId = 104, Name = "F1 Custom Team" },
-                    new { GameId = 106, Name = "Prema (2021)" },
-                    new { GameId = 107, Name = "Uni-Virtuosi (2021)" },
-                    new { GameId = 108, Name = "Carlin (2021)" },
-                    new { GameId = 109, Name = "Hitech (2021)" },
-                    new { GameId = 110, Name = "Art GP (2021)" },
-                    new { GameId = 111, Name = "MP Motorsport (2021)" },
-                    new { GameId = 112, Name = "Charouz (2021)" },
-                    new { GameId = 113, Name = "Dams (2021)" },
-                    new { GameId = 114, Name = "Campos (2021)" },
-                    new { GameId = 115, Name = "BWT (2021)" },
-                    new { GameId = 116, Name = "Trident (2021)" },
-                    new { GameId = 117, Name = "Mercedes AMG GT Black Series" },
-                    new { GameId = 118, Name = "Mercedes (2022)" },
-                    new { GameId = 119, Name = "Ferrari (2022)" },
-                    new { GameId = 120, Name = "Red Bull Racing (2022)" },
-                    new { GameId = 121, Name = "Williams (2022)" },
-                    new { GameId = 122, Name = "Aston Martin (2022)" },
-                    new { GameId = 123, Name = "Alpine (2022)" },
-                    new { GameId = 124, Name = "AlphaTauri (2022)" },
-                    new { GameId = 125, Name = "Haas (2022)" },
-                    new { GameId = 126, Name = "McLaren (2022)" },
-                    new { GameId = 127, Name = "Alfa Romeo (2022)" },
-                    new { GameId = 128, Name = "Konnersport (2022)" },
-                    new { GameId = 129, Name = "Konnersport" },
-                    new { GameId = 130, Name = "Prema (2022)" },
-                    new { GameId = 131, Name = "Uni-Virtuosi (2022)" },
-                    new { GameId = 132, Name = "Carlin (2022)" },
-                    new { GameId = 133, Name = "MP Motorsport (2022)" },
-                    new { GameId = 134, Name = "Charouz (2022)" },
-                    new { GameId = 135, Name = "Dams (2022)" },
-                    new { GameId = 136, Name = "Campos (2022)" },
-                    new { GameId = 137, Name = "Van Amersfoort Racing (2022)" },
-                    new { GameId = 138, Name = "Trident (2022)" },
-                    new { GameId = 139, Name = "Hitech (2022)" },
-                    new { GameId = 140, Name = "Art GP (2022)" },
-                    new { GameId = 143, Name = "ART Grand Prix (2023)" },
-                    new { GameId = 144, Name = "Campos Racing (2023)" },
-                    new { GameId = 145, Name = "Carlin (2023)" },
-                    new { GameId = 146, Name = "PHM Racing (2023)" },
-                    new { GameId = 147, Name = "DAMS (2023)" },
-                    new { GameId = 148, Name = "Hitech (2023)" },
-                    new { GameId = 149, Name = "MP Motorsport (2023)" },
-                    new { GameId = 150, Name = "Prema (2023)" },
-                    new { GameId = 151, Name = "Trident (2023)" },
-                    new { GameId = 152, Name = "Van Amersfoort Racing (2023)" },
-                    new { GameId = 153, Name = "Uni-Virtuosi (2023)" }
-                };
+                List<dynamic> teamlist =
+                    new()
+                    {
+                        new { GameId = 0, Name = "Mercedes-AMG Petronas F1 Team" },
+                        new { GameId = 1, Name = "Scuderia Ferrari" },
+                        new { GameId = 2, Name = "Oracle Red Bull Racing" },
+                        new { GameId = 3, Name = "Williams Racing" },
+                        new { GameId = 4, Name = "Aston Martin Aramco Cognizant F1 Team" },
+                        new { GameId = 5, Name = "BWT Alpine F1 Team" },
+                        new { GameId = 6, Name = "Scuderia AlphaTauri" },
+                        new { GameId = 7, Name = "Haas F1 Team" },
+                        new { GameId = 8, Name = "McLaren F1 Team" },
+                        new { GameId = 9, Name = "Alfa Romeo F1 Team ORLEN" },
+                        new { GameId = 85, Name = "Mercedes (2020)" },
+                        new { GameId = 86, Name = "Ferrari (2020)" },
+                        new { GameId = 87, Name = "Red Bull (2020)" },
+                        new { GameId = 88, Name = "Williams (2020)" },
+                        new { GameId = 89, Name = "Racing Point (2020)" },
+                        new { GameId = 90, Name = "Renault (2020)" },
+                        new { GameId = 91, Name = "AlphaTauri (2020)" },
+                        new { GameId = 92, Name = "Haas (2020)" },
+                        new { GameId = 93, Name = "McLaren (2020)" },
+                        new { GameId = 94, Name = "Alfa Romeo (2020)" },
+                        new { GameId = 95, Name = "Aston Martin DB11 V12" },
+                        new { GameId = 96, Name = "Aston Martin Vantage F1 Edition" },
+                        new { GameId = 97, Name = "Aston Martin Vantage Safety Car" },
+                        new { GameId = 98, Name = "Ferrari F8 Tributo" },
+                        new { GameId = 99, Name = "Ferrari Roma" },
+                        new { GameId = 100, Name = "McLaren 7205" },
+                        new { GameId = 101, Name = "McLaren Artura" },
+                        new { GameId = 102, Name = "Mercedes AMG GT Black Series Safety Car" },
+                        new { GameId = 103, Name = "Mercedes AMG GTR Pro" },
+                        new { GameId = 104, Name = "F1 Custom Team" },
+                        new { GameId = 106, Name = "Prema (2021)" },
+                        new { GameId = 107, Name = "Uni-Virtuosi (2021)" },
+                        new { GameId = 108, Name = "Carlin (2021)" },
+                        new { GameId = 109, Name = "Hitech (2021)" },
+                        new { GameId = 110, Name = "Art GP (2021)" },
+                        new { GameId = 111, Name = "MP Motorsport (2021)" },
+                        new { GameId = 112, Name = "Charouz (2021)" },
+                        new { GameId = 113, Name = "Dams (2021)" },
+                        new { GameId = 114, Name = "Campos (2021)" },
+                        new { GameId = 115, Name = "BWT (2021)" },
+                        new { GameId = 116, Name = "Trident (2021)" },
+                        new { GameId = 117, Name = "Mercedes AMG GT Black Series" },
+                        new { GameId = 118, Name = "Mercedes (2022)" },
+                        new { GameId = 119, Name = "Ferrari (2022)" },
+                        new { GameId = 120, Name = "Red Bull Racing (2022)" },
+                        new { GameId = 121, Name = "Williams (2022)" },
+                        new { GameId = 122, Name = "Aston Martin (2022)" },
+                        new { GameId = 123, Name = "Alpine (2022)" },
+                        new { GameId = 124, Name = "AlphaTauri (2022)" },
+                        new { GameId = 125, Name = "Haas (2022)" },
+                        new { GameId = 126, Name = "McLaren (2022)" },
+                        new { GameId = 127, Name = "Alfa Romeo (2022)" },
+                        new { GameId = 128, Name = "Konnersport (2022)" },
+                        new { GameId = 129, Name = "Konnersport" },
+                        new { GameId = 130, Name = "Prema (2022)" },
+                        new { GameId = 131, Name = "Uni-Virtuosi (2022)" },
+                        new { GameId = 132, Name = "Carlin (2022)" },
+                        new { GameId = 133, Name = "MP Motorsport (2022)" },
+                        new { GameId = 134, Name = "Charouz (2022)" },
+                        new { GameId = 135, Name = "Dams (2022)" },
+                        new { GameId = 136, Name = "Campos (2022)" },
+                        new { GameId = 137, Name = "Van Amersfoort Racing (2022)" },
+                        new { GameId = 138, Name = "Trident (2022)" },
+                        new { GameId = 139, Name = "Hitech (2022)" },
+                        new { GameId = 140, Name = "Art GP (2022)" },
+                        new { GameId = 143, Name = "ART Grand Prix (2023)" },
+                        new { GameId = 144, Name = "Campos Racing (2023)" },
+                        new { GameId = 145, Name = "Carlin (2023)" },
+                        new { GameId = 146, Name = "PHM Racing (2023)" },
+                        new { GameId = 147, Name = "DAMS (2023)" },
+                        new { GameId = 148, Name = "Hitech (2023)" },
+                        new { GameId = 149, Name = "MP Motorsport (2023)" },
+                        new { GameId = 150, Name = "Prema (2023)" },
+                        new { GameId = 151, Name = "Trident (2023)" },
+                        new { GameId = 152, Name = "Van Amersfoort Racing (2023)" },
+                        new { GameId = 153, Name = "Uni-Virtuosi (2023)" }
+                    };
 
                 var team = teamlist.FirstOrDefault(t => t.GameId == teamId);
-                if (team != null)
-                {
-                    return team.Name;
-                }
-                return "Unknown";
+                return team != null ? (string)team.Name : "Unknown";
             }
 
             // Method for getting weather condition from weather id (as F1 uses integers)
-            string GetWeatherConditions(int weatherId)
-            {
-                switch (weatherId)
+            string GetWeatherConditions(int weatherId) =>
+                weatherId switch
                 {
-                    case 0:
-                        weatherConditions = "Clear";
-                        break;
-                    case 1:
-                        weatherConditions = "Light Cloud";
-                        break;
-                    case 2:
-                        weatherConditions = "Overcast";
-                        break;
-                    case 3:
-                        weatherConditions = "Light Rain";
-                        break;
-                    case 4:
-                        weatherConditions = "Heavy Rain";
-                        break;
-                    case 5:
-                        weatherConditions = "Storm";
-                        break;
-                    default:
-                        Log.Fatal("Unknown weather ID.");
-                        throw new Exception("Unknown weather ID");
-                }
-                return weatherConditions;
-            }
+                    0 => "Clear",
+                    1 => "Light Cloud",
+                    2 => "Overcast",
+                    3 => "Light Rain",
+                    4 => "Heavy Rain",
+                    5 => "Storm",
+                    _ => throw new Exception("Unknown weather ID")
+                };
 
             // Method for when receiving session data
             // Session data is received twice a second until the session is destroyed. It only contains data about the ongoing session.
@@ -747,167 +704,71 @@ namespace F1RPC
                 safetyCars = packet.numSafetyCarPeriods;
                 redFlags = packet.numRedFlagPeriods;
 
+                networkGame = packet.networkGame != 0;
+
                 weatherConditions = GetWeatherConditions(weatherId);
 
                 // Case switch for checking track id, setting track name and setting track image
-                switch ((int)packet.trackId)
+                track = (int)packet.trackId switch
                 {
-                    case 0:
-                        track = "Australia: Melbourne";
-                        break;
-                    case 1:
-                        track = "France: Le Castellet";
-                        break;
-                    case 2:
-                        track = "China: Shanghai";
-                        break;
-                    case 3:
-                        track = "Bahrain: Sakhir";
-                        break;
-                    case 4:
-                        track = "Spain: Barcelona-Catalunya";
-                        break;
-                    case 5:
-                        track = "Monaco";
-                        break;
-                    case 6:
-                        track = "Canada: Montreal";
-                        break;
-                    case 7:
-                        track = "UK: Silverstone";
-                        break;
-                    case 8:
-                        track = "Germany: Hockenheim";
-                        break;
-                    case 9:
-                        track = "Hungary: Budapest";
-                        break;
-                    case 10:
-                        track = "Belgium: Spa-Francorchamps";
-                        break;
-                    case 11:
-                        track = "Italy: Monza";
-                        break;
-                    case 12:
-                        track = "Singapore";
-                        break;
-                    case 13:
-                        track = "Japan: Suzuka";
-                        break;
-                    case 14:
-                        track = "Abu Dhabi: Yas Marina";
-                        break;
-                    case 15:
-                        track = "USA (Texas): COTA";
-                        break;
-                    case 16:
-                        track = "Brazil: Sao Paolo";
-                        break;
-                    case 17:
-                        track = "Austria: Spielberg";
-                        break;
-                    case 18:
-                        track = "Russia: Sochi";
-                        break;
-                    case 19:
-                        track = "Mexico";
-                        break;
-                    case 20:
-                        track = "Azerbaijan: Baku";
-                        break;
-                    case 21:
-                        track = "Bahrain: Sakhir (Short)";
-                        break;
-                    case 22:
-                        track = "UK: Silverstone (Short)";
-                        break;
-                    case 23:
-                        track = "USA (Texas): COTA (Short)";
-                        break;
-                    case 24:
-                        track = "Japan: Suzuka (Short)";
-                        break;
-                    case 25:
-                        track = "Vietnam: Hanoi";
-                        break;
-                    case 26:
-                        track = "Netherlands: Zandvoort";
-                        break;
-                    case 27:
-                        track = "Italy: Imola";
-                        break;
-                    case 28:
-                        track = "Portugal: Portimao";
-                        break;
-                    case 29:
-                        track = "Saudi Arabia: Jeddah";
-                        break;
-                    case 30:
-                        track = "USA (Florida): Miami";
-                        break;
-                    case 31:
-                        track = "USA (Nevada): Las Vegas";
-                        break;
-                    case 32:
-                        track = "Qatar: Losail";
-                        break;
-                    default:
-                        Log.Fatal("Unknown track ID.");
-                        throw new Exception("Unknown track ID");
-                }
+                    0 => "Australia: Melbourne",
+                    1 => "France: Le Castellet",
+                    2 => "China: Shanghai",
+                    3 => "Bahrain: Sakhir",
+                    4 => "Spain: Barcelona-Catalunya",
+                    5 => "Monaco",
+                    6 => "Canada: Montreal",
+                    7 => "UK: Silverstone",
+                    8 => "Germany: Hockenheim",
+                    9 => "Hungary: Budapest",
+                    10 => "Belgium: Spa-Francorchamps",
+                    11 => "Italy: Monza",
+                    12 => "Singapore",
+                    13 => "Japan: Suzuka",
+                    14 => "Abu Dhabi: Yas Marina",
+                    15 => "USA (Texas): COTA",
+                    16 => "Brazil: Sao Paolo",
+                    17 => "Austria: Spielberg",
+                    18 => "Russia: Sochi",
+                    19 => "Mexico",
+                    20 => "Azerbaijan: Baku",
+                    21 => "Bahrain: Sakhir (Short)",
+                    22 => "UK: Silverstone (Short)",
+                    23 => "USA (Texas): COTA (Short)",
+                    24 => "Japan: Suzuka (Short)",
+                    25 => "Vietnam: Hanoi",
+                    26 => "Netherlands: Zandvoort",
+                    27 => "Italy: Imola",
+                    28 => "Portugal: Portimao",
+                    29 => "Saudi Arabia: Jeddah",
+                    30 => "USA (Florida): Miami",
+                    31 => "USA (Nevada): Las Vegas",
+                    32 => "Qatar: Losail",
+                    _ => throw new Exception("Unknown track ID")
+                };
 
                 // Case Switch for Packet Session Type
-                switch ((int)packet.sessionType)
+                sessionType = (int)packet.sessionType switch
                 {
-                    case 0:
-                        sessionType = "Unknown";
-                        break;
-                    case 1:
-                        sessionType = "Practice 1";
-                        break;
-                    case 2:
-                        sessionType = "Practice 2";
-                        break;
-                    case 3:
-                        sessionType = "Practice 3";
-                        break;
-                    case 4:
-                        sessionType = "Short Practice";
-                        break;
-                    case 5:
-                        sessionType = "Qualifying 1";
-                        break;
-                    case 6:
-                        sessionType = "Qualifying 2";
-                        break;
-                    case 7:
-                        sessionType = "Qualifying 3";
-                        break;
-                    case 8:
-                        sessionType = "Short Qualifying";
-                        break;
-                    case 9:
-                        sessionType = "One-Shot Qualifying";
-                        break;
-                    case 10:
-                        sessionType = "Race";
-                        break;
-                    case 11:
-                        sessionType = "Race 2";
-                        break;
-                    case 12:
-                        sessionType = "Race 3";
-                        break;
-                    case 13:
-                        sessionType = "Time Trial";
-                        break;
-                    default:
-                        Log.Fatal("Unknown session type.");
-                        throw new Exception("Unknown session type");
-                }
+                    0 => "Unknown",
+                    1 => "Practice 1",
+                    2 => "Practice 2",
+                    3 => "Practice 3",
+                    4 => "Short Practice",
+                    5 => "Qualifying 1",
+                    6 => "Qualifying 2",
+                    7 => "Qualifying 3",
+                    8 => "Short Qualifying",
+                    9 => "One-Shot Qualifying",
+                    10 => "Race",
+                    11 => "Race 2",
+                    12 => "Race 3",
+                    13 => "Time Trial",
+                    _ => throw new Exception("Unknown session type")
+                };
 
                 // Practice / Qualifying
-                if ((int)packet.sessionType >= 1 && (int)packet.sessionType <= 9)
+                if ((int)packet.sessionType is >= 1 and <= 9)
                 {
                     discord.SetPresence(
                         new RichPresence
@@ -925,7 +786,7 @@ namespace F1RPC
                 }
 
                 // Race
-                if ((int)packet.sessionType >= 10 && (int)packet.sessionType <= 12)
+                if ((int)packet.sessionType is >= 10 and <= 12)
                 {
                     discord.SetPresence(
                         new RichPresence
@@ -985,76 +846,24 @@ namespace F1RPC
             await Task.Delay(-1).ConfigureAwait(false);
         }
 
-        private string GetDriverName(object driverId)
-        {
-            switch (driverId)
-            {
-                case 0:
-                    return "Carlos Sainz";
-                case 2:
-                    return "Daniel Ricciardo";
-                case 3:
-                    return "Fernando Alonso";
-                case 7:
-                    return "Lewis Hamilton";
-                case 9:
-                    return "Max Verstappen";
-                case 10:
-                    return "Nico Hulkenberg";
-                case 11:
-                    return "Kevin Magnussen";
-                case 14:
-                    return "Sergio Perez";
-                case 15:
-                    return "Valtteri Bottas";
-                case 17:
-                    return "Esteban Ocon";
-                case 19:
-                    return "Lance Stroll";
-                case 50:
-                    return "George Russell";
-                case 54:
-                    return "Lando Norris";
-                case 58:
-                    return "Charles Leclerc";
-                case 59:
-                    return "Pierre Gasly";
-                case 62:
-                    return "Alexander Albon";
-                case 72:
-                    return "Devon Butler";
-                case 80:
-                    return "Zhou Guanyu";
-                case 94:
-                    return "Yuki Tsunoda";
-                case 112:
-                    return "Oscar Piastri";
-                case 132:
-                    return "Logan Sargeant";
-                default:
-                    Log.Fatal("Unknown driver ID.");
-                    return string.Empty;
-            }
-        }
-
-        private DiscordColor GetEmbedColorByPosition(int finalPosition)
+        private static DiscordColor GetEmbedColorByPosition(int finalPosition)
         {
             if (finalPosition == 1)
             {
-                var color = new DiscordColor(Color.Gold);
+                DiscordColor color = new(Color.Gold);
                 return color;
             }
             if (finalPosition == 2)
             {
-                var color = new DiscordColor(Color.Silver);
+                DiscordColor color = new(Color.Silver);
                 return color;
             }
             if (finalPosition == 3)
             {
-                var color = new DiscordColor(Color.SaddleBrown);
+                DiscordColor color = new(Color.SaddleBrown);
                 return color;
             }
-            if (finalPosition >= 4 && finalPosition <= 10)
+            if (finalPosition is >= 4 and <= 10)
             {
                 var color = new DiscordColor(Color.Cyan);
                 return color;
@@ -1064,11 +873,6 @@ namespace F1RPC
                 var color = new DiscordColor(Color.White);
                 return color;
             }
-        }
-
-        double ConvertKmhToMph(double kmh)
-        {
-            return kmh * 0.621371;
         }
     }
 }
