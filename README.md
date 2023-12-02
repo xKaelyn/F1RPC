@@ -17,8 +17,7 @@ A simple, but effective, Discord RPC program for EA's F1 23.
 
 **Discord Embed**
 
-<img width="460" alt="Screenshot 2023-12-01 at 19 02 32" src="https://github.com/xKaelyn/F1RPC/assets/20905508/25cc8a80-3d3d-4e6d-b4e4-002a5719f744">
-
+<img width="574" alt="Screenshot 2023-12-02 at 01 25 09" src="https://github.com/xKaelyn/F1RPC/assets/20905508/ee8ab758-613b-4da0-9673-28b5431e2e8f">
 
 #### Features
 - Displays when the player is waiting in a lobby, and shows how many additional players are in the lobby.
