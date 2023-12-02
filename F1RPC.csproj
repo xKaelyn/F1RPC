@@ -10,8 +10,8 @@
     <SignAssembly>False</SignAssembly>
     <Authors>xKaelyn</Authors>
     <Company>$(Authors)</Company>
-    <AssemblyVersion>1.0.0.3</AssemblyVersion>
-    <FileVersion>1.0.0.3</FileVersion>
+    <AssemblyVersion>1.0.1.0</AssemblyVersion>
+    <FileVersion>1.0.1.0</FileVersion>
   </PropertyGroup>
 
   <ItemGroup>
