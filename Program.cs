@@ -348,17 +348,10 @@ namespace F1RPC
                         {
                             // Capitalize the first letter of the player name if it's not a network game
                             // As otherwise, driver names are all uppercase - e.g RICCIARDO, VERSTAPPEN etc.
-                            string playerNameValue = "";
-                            if (!networkGame)
-                            {
-                                playerNameValue =
-                                    char.ToUpperInvariant(playerName[0])
-                                    + playerName.Substring(1).ToLowerInvariant();
-                            }
-                            else
-                            {
-                                playerNameValue = playerName;
-                            }
+                            string playerNameValue = !networkGame
+                                ? char.ToUpperInvariant(playerName[0])
+                                    + playerName[1..].ToLowerInvariant()
+                                : playerName;
                             DiscordMessage message = new();
                             DiscordEmbed embed =
                                 new()
