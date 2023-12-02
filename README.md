@@ -1,6 +1,6 @@
 # F1RPC
 
-A simple, but effective, Discord RPC program for EA's F1 23.
+A simple, but effective, Discord RPC program for EA's F1 23, with the optional feature of submitting race results via Discord Webhook requests.
 
 #### Images
 **Idle**
