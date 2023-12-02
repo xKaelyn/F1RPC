@@ -40,6 +40,10 @@ Create a Discord Application by going [**here**](https://discord.com/developers/
 When downloaded, extract to a location of your choice and run the exe file. It can be ran either before or after booting F1, it will detect the process and initialize.
 Simple as that; enjoy the RPC!
 
+#### How do I use the Discord Webhook feature?
+Right click on any channel on Discord you have edit permissions on - click 'Integrations', select 'Webhooks' and create a webhook.
+Name it something memorable (such as 'F1 Race Results') and use the copy webhook URL button. Then open 'assets/config/Configuration.json' and replace 'YOUR_WEBHOOK_URL_HERE' with the URL you copied from Discord; and then just boot up F1RPC. If you have done it correctly, you will get a log line in the console saying the feature is enabled.
+
 #### Using multiple programs at the same time
 If you're using multiple programs for the UDP telemetry at the same time (e.g SimHub, F1Laps etc), you can use SimHub to forward the UDP telemetry to allow it to be broadcast to separate ports at the same time.
 - In Simhub select your game and press "Game Config".
