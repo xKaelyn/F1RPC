@@ -17,9 +17,9 @@
 
 <p align="center">
     <a href="#-features"><b>Features</b></a> •
-    <a href="#%EF%B8%8F-installation"><b>Installation</b></a> •
+    <a href="#-installation"><b>Installation</b></a> •
     <a href="#screenshots"><b>Screenshots</b></a> •
-    <a href="#%E2%9D%A4-contribute"><b>Contribute</b></a>
+    <a href="#-contribute"><b>Contribute</b></a>
 </p>
 
 ---
