@@ -1,4 +1,17 @@
-﻿using System.Diagnostics;
+/*
+ * F1RPC - A simple, but effective, Discord RPC program for EA's F1 23, with the optional feature of submitting race results via Discord Webhook requests.
+ * 
+ * Author: Plushie (fretfxul)
+ * GitHub: https://github.com/xKaelyn/F1RPC
+ * 
+ * License: MIT License
+ * 
+ * Please refer to the GitHub repository for detailed documentation and contributing guidelines.
+ *  
+ * Created by Plushie (fretfxul), 2023.
+ */
+
+using System.Diagnostics;
 using System.Drawing;
 using System.Reflection;
 using System.Runtime.InteropServices;
