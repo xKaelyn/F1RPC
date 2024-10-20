@@ -19,7 +19,7 @@
     <a href="#-features"><b>Features</b></a> •
     <a href="#-installation"><b>Installation</b></a> •
     <a href="#screenshots"><b>Screenshots</b></a> •
-    <a href="#-contribute"><b>Contribute</b></a>
+    <a href="#%EF%B8%8F-contribute"><b>Contribute</b></a>
 </p>
 
 ---
