@@ -1,5 +1,7 @@
 # F1RPC
 
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/72b68120ccaa40ce83d867de30aff384)](https://app.codacy.com/gh/xKaelyn/F1RPC?utm_source=github.com&utm_medium=referral&utm_content=xKaelyn/F1RPC&utm_campaign=Badge_Grade)
+
 A simple, but effective, Discord RPC program for EA's F1 23, with the optional feature of submitting race results via Discord Webhook requests.
 
 #### Images
